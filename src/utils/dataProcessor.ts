@@ -111,7 +111,6 @@ export function buildConstraintLevelDetail(traceConstraintMap: Map<string, Map<s
     stats.traces = Array.from(stats.traces);
     stats.violatingTraces = Array.from(stats.violatingTraces);
   }
-  console.log(constraintTraceMap, constraintStatsMap)
   return { constraintTraceMap, constraintStatsMap };
 }
 
@@ -121,11 +120,6 @@ export class DataProcessor {
   static parseDeclareModel(modelText: string): DeclareConstraint[] {
     const constraints: DeclareConstraint[] = [];
     const lines = modelText.split('\n');
-    
-    console.log('DataProcessor.parseDeclareModel - Input:', {
-      totalLines: lines.length,
-      sampleLines: lines.slice(0, 5)
-    });
     
     for (const line of lines) {
       const trimmedLine = line.trim();
@@ -150,11 +144,6 @@ export class DataProcessor {
       }
     }
     
-    console.log('DataProcessor.parseDeclareModel - Result:', {
-      parsedConstraints: constraints.length,
-      sampleConstraints: constraints.slice(0, 3)
-    });
-    
     return constraints;
   }
 
@@ -162,12 +151,6 @@ export class DataProcessor {
   static parseAnalysisOverview(analysisText: string): ConstraintStatistics[] {
     const stats: ConstraintStatistics[] = [];
     const lines = analysisText.split('\n');
-    
-    console.log('DataProcessor.parseAnalysisOverview - Input:', {
-      totalLines: lines.length,
-      firstLine: lines[0],
-      sampleLines: lines.slice(1, 5)
-    });
     
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(';');
@@ -197,11 +180,6 @@ export class DataProcessor {
       }
     }
     
-    console.log('DataProcessor.parseAnalysisOverview - Result:', {
-      parsedStats: stats.length,
-      sampleStats: stats.slice(0, 3)
-    });
-    
     return stats;
   }
 
@@ -209,12 +187,6 @@ export class DataProcessor {
   static parseReplayOverview(replayText: string): TraceStatistics[] {
     const stats: TraceStatistics[] = [];
     const lines = replayText.split('\n');
-    
-    console.log('DataProcessor.parseReplayOverview - Input:', {
-      totalLines: lines.length,
-      firstLine: lines[0],
-      sampleLines: lines.slice(1, 5)
-    });
     
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(';');
@@ -233,11 +205,6 @@ export class DataProcessor {
       }
     }
     
-    console.log('DataProcessor.parseReplayOverview - Result:', {
-      parsedStats: stats.length,
-      sampleStats: stats.slice(0, 3)
-    });
-    
     return stats;
   }
 
@@ -245,12 +212,6 @@ export class DataProcessor {
   static parseAnalysisDetail(detailText: string): Map<string, Map<string, string[]>> {
     const traceConstraintMap = new Map<string, Map<string, string[]>>();
     const lines = detailText.split('\n');
-    
-    console.log('DataProcessor.parseAnalysisDetail - Input:', {
-      totalLines: lines.length,
-      firstLine: lines[0],
-      sampleLines: lines.slice(1, 5)
-    });
     
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(';');
@@ -273,19 +234,12 @@ export class DataProcessor {
       }
     }
     
-    console.log('DataProcessor.parseAnalysisDetail - Result:', {
-      uniqueTraces: traceConstraintMap.size,
-      sampleTrace: Array.from(traceConstraintMap.entries()).slice(0, 1)
-    });
-    
     return traceConstraintMap;
   }
 
   // Parse XES event log using proper XML parser
   static parseEventLog(eventLogText: string): ProcessCase[] {
     const cases: ProcessCase[] = [];
-    
-    console.log('DataProcessor.parseEventLog - Starting parsing with XML parser');
     
     try {
       // Configure XML parser for XES format
@@ -301,24 +255,8 @@ export class DataProcessor {
       // Parse the XML
       const parsed = parser.parse(eventLogText);
       
-      console.log('DataProcessor.parseEventLog - XML parsed successfully:', {
-        hasLog: !!parsed.log,
-        logKeys: parsed.log ? Object.keys(parsed.log) : [],
-        hasTraces: !!parsed.log?.trace,
-        traceCount: Array.isArray(parsed.log?.trace) ? parsed.log.trace.length : (parsed.log?.trace ? 1 : 0)
-      });
-      
       // Handle both single trace and multiple traces
       const traces = Array.isArray(parsed.log?.trace) ? parsed.log.trace : (parsed.log?.trace ? [parsed.log.trace] : []);
-      
-      console.log('DataProcessor.parseEventLog - Processing traces:', {
-        traceCount: traces.length,
-        sampleTrace: traces[0] ? {
-          hasConceptName: !!traces[0]['string'],
-          conceptNameValue: traces[0]['string']?.[0]?.['@_value'],
-          eventCount: Array.isArray(traces[0].event) ? traces[0].event.length : (traces[0].event ? 1 : 0)
-        } : null
-      });
       
       for (const trace of traces) {
         // Extract case ID from concept:name
@@ -332,23 +270,10 @@ export class DataProcessor {
           }
         }
         
-        console.log('DataProcessor.parseEventLog - Processing case:', { caseId });
-        
         const events: ProcessEvent[] = [];
         
         // Handle both single event and multiple events
         const traceEvents = Array.isArray(trace.event) ? trace.event : (trace.event ? [trace.event] : []);
-        
-        console.log('DataProcessor.parseEventLog - Case events:', {
-          caseId,
-          eventCount: traceEvents.length,
-          sampleEvent: traceEvents[0] ? {
-            hasConceptName: !!traceEvents[0]['string'],
-            conceptNameValue: traceEvents[0]['string']?.[0]?.['@_value'],
-            hasTimestamp: !!traceEvents[0]['date'],
-            timestampValue: traceEvents[0]['date']?.[0]?.['@_value']
-          } : null
-        });
         
         for (const event of traceEvents) {
           const eventStrings = Array.isArray(event.string) ? event.string : (event.string ? [event.string] : []);
@@ -380,13 +305,6 @@ export class DataProcessor {
           };
           
           events.push(processEvent);
-          
-          console.log('DataProcessor.parseEventLog - Parsed event:', {
-            activity,
-            timestamp,
-            resource,
-            eventId: processEvent.id
-          });
         }
         
         if (events.length > 0) {
@@ -395,31 +313,14 @@ export class DataProcessor {
             events
           };
           cases.push(processCase);
-          
-          console.log('DataProcessor.parseEventLog - Added case:', {
-            caseId,
-            eventsCount: events.length
-          });
         }
       }
       
     } catch (error) {
-      console.error('DataProcessor.parseEventLog - Error parsing XES:', error);
       
       // Fallback to old regex-based parsing for backward compatibility
-      console.log('DataProcessor.parseEventLog - Falling back to regex parsing');
       return this.parseEventLogLegacy(eventLogText);
     }
-    
-    console.log('DataProcessor.parseEventLog - Parsing complete:', {
-      totalCases: cases.length,
-      caseIds: cases.map(c => c.caseId),
-      sampleCase: cases[0] ? {
-        caseId: cases[0].caseId,
-        eventsCount: cases[0].events.length,
-        sampleEvents: cases[0].events.slice(0, 3)
-      } : null
-    });
     
     return cases;
   }
@@ -429,11 +330,6 @@ export class DataProcessor {
     const cases: ProcessCase[] = [];
     const lines = eventLogText.split('\n');
     let currentCase: ProcessCase | null = null;
-    
-    console.log('DataProcessor.parseEventLogLegacy - Starting legacy parsing:', {
-      totalLines: lines.length,
-      sampleLines: lines.slice(0, 10)
-    });
     
     for (const line of lines) {
       if (line.includes('<trace')) {
@@ -446,8 +342,6 @@ export class DataProcessor {
         const match = line.match(/id="([^"]+)"/);
         const caseId = match ? match[1] : `case_${Date.now()}`;
         currentCase = { caseId, events: [] };
-        
-        console.log('DataProcessor.parseEventLogLegacy - Found case:', { caseId });
       } else if (line.includes('<event') && currentCase) {
         const activityMatch = line.match(/activity="([^"]+)"/);
         const timestampMatch = line.match(/timestamp="([^"]+)"/);
@@ -470,19 +364,12 @@ export class DataProcessor {
       cases.push(currentCase);
     }
     
-    console.log('DataProcessor.parseEventLogLegacy - Legacy parsing complete:', {
-      totalCases: cases.length,
-      caseIds: cases.map(c => c.caseId)
-    });
-    
     return cases;
   }
 
   // Parse aligned log using XML parser
   static parseAlignedLog(alignedLogText: string): AlignedCase[] {
     const cases: AlignedCase[] = [];
-    
-    console.log('DataProcessor.parseAlignedLog - Starting parsing with XML parser');
     
     try {
       // Configure XML parser for XES format
@@ -497,13 +384,6 @@ export class DataProcessor {
       
       // Parse the XML
       const parsed = parser.parse(alignedLogText);
-      
-      console.log('DataProcessor.parseAlignedLog - XML parsed successfully:', {
-        hasLog: !!parsed.log,
-        logKeys: parsed.log ? Object.keys(parsed.log) : [],
-        hasTraces: !!parsed.log?.trace,
-        traceCount: Array.isArray(parsed.log?.trace) ? parsed.log.trace.length : (parsed.log?.trace ? 1 : 0)
-      });
       
       // Handle both single trace and multiple traces
       const traces = Array.isArray(parsed.log?.trace) ? parsed.log.trace : (parsed.log?.trace ? [parsed.log.trace] : []);
@@ -520,26 +400,16 @@ export class DataProcessor {
           }
         }
         
-        console.log('DataProcessor.parseAlignedLog - Processing case:', { caseId });
-        
         const events: any[] = [];
         
         // Handle both single event and multiple events
         const traceEvents = Array.isArray(trace.event) ? trace.event : (trace.event ? [trace.event] : []);
         
         for (const event of traceEvents) {
-          console.log('DataProcessor.parseAlignedLog - Raw event structure:', {
-            eventKeys: Object.keys(event),
-            eventString: event.string,
-            eventDate: event.date,
-            eventAttributes: Object.keys(event).filter(key => key.startsWith('@_'))
-          });
-          
           // Helper to get string values from child elements
           const getStringValueFromChildren = (key: string): string | undefined => {
             if (!event.string) return undefined;
             const eventStrings = Array.isArray(event.string) ? event.string : [event.string];
-            console.log('DataProcessor.parseAlignedLog - Looking for key:', key, 'in strings:', eventStrings);
             const attribute = eventStrings.find((s: any) => s['@_key'] === key);
             return attribute ? attribute['@_value'] : undefined;
           };
@@ -551,20 +421,10 @@ export class DataProcessor {
           
           // If no alignment data found, treat as regular event log
           if (!originalActivity && !alignedActivity && !eventType) {
-            console.log('DataProcessor.parseAlignedLog - No alignment data found, treating as regular event log');
             originalActivity = getStringValueFromChildren('concept:name') || 'Unknown';
             alignedActivity = originalActivity; // Same as original for regular events
             eventType = 'complete'; // Default type for regular events
           }
-          
-          console.log('DataProcessor.parseAlignedLog - Extracted values:', {
-            originalActivity,
-            alignedActivity,
-            eventType,
-            hasOriginalAttr: event['@_original'] !== undefined,
-            hasAlignedAttr: event['@_aligned'] !== undefined,
-            hasTypeAttr: event['@_type'] !== undefined
-          });
           
           // Extract timestamp from child <date> element or from attribute
           let timestamp = new Date().toISOString();
@@ -588,8 +448,6 @@ export class DataProcessor {
           if (eventType) alignedEvent.type = eventType;
           
           events.push(alignedEvent);
-          
-          console.log('DataProcessor.parseAlignedLog - Final aligned event:', alignedEvent);
         }
         
         if (events.length > 0) {
@@ -598,26 +456,14 @@ export class DataProcessor {
             events
           };
           cases.push(alignedCase);
-          
-          console.log('DataProcessor.parseAlignedLog - Added aligned case:', {
-            caseId,
-            eventsCount: events.length
-          });
         }
       }
       
     } catch (error) {
-      console.error('DataProcessor.parseAlignedLog - Error parsing aligned XES:', error);
       
       // Fallback to old regex-based parsing for backward compatibility
-      console.log('DataProcessor.parseAlignedLog - Falling back to regex parsing');
       return this.parseAlignedLogLegacy(alignedLogText);
     }
-    
-    console.log('DataProcessor.parseAlignedLog - Parsing complete:', {
-      totalCases: cases.length,
-      caseIds: cases.map(c => c.caseId)
-    });
     
     return cases;
   }
@@ -672,7 +518,8 @@ export class DataProcessor {
     replayOverview: TraceStatistics[],
     analysisDetail: Map<string, Map<string, string[]>>,
     eventLog: ProcessCase[],
-    alignedLog: AlignedCase[]
+    alignedLog: AlignedCase[],
+    taggedConstraints?: DashboardConstraint[]
   ): {
     dashboardConstraints: DashboardConstraint[];
     dashboardTraces: DashboardTrace[];
@@ -681,25 +528,10 @@ export class DataProcessor {
     constraintGroups: ConstraintGroup[];
   } {
     
-    console.log('DataProcessor.processData - Input data:', {
-      constraintsCount: constraints.length,
-      analysisOverviewCount: analysisOverview.length,
-      replayOverviewCount: replayOverview.length,
-      analysisDetailTraces: analysisDetail.size,
-      eventLogCount: eventLog.length,
-      alignedLogCount: alignedLog.length
-    });
-    
     // Create constraint statistics map
     const constraintStatsMap = new Map<string, ConstraintStatistics>();
     analysisOverview.forEach(stat => {
       constraintStatsMap.set(stat.constraintId, stat);
-    });
-    
-    console.log('DataProcessor.processData - Analysis overview stats:', {
-      totalStats: analysisOverview.length,
-      sampleStats: analysisOverview.slice(0, 3),
-      constraintStatsMapKeys: Array.from(constraintStatsMap.keys()).slice(0, 5)
     });
     
     // Create event log map
@@ -708,27 +540,10 @@ export class DataProcessor {
       eventLogMap.set(case_.caseId, case_.events);
     });
     
-    console.log('DataProcessor.processData - Event log mapping:', {
-      eventLogCases: eventLog.length,
-      eventLogCaseIds: eventLog.map(c => c.caseId),
-      eventLogMapKeys: Array.from(eventLogMap.keys()),
-      sampleEventLogCase: eventLog[0] ? {
-        caseId: eventLog[0].caseId,
-        eventsCount: eventLog[0].events.length,
-        sampleEvents: eventLog[0].events.slice(0, 3)
-      } : null
-    });
-    
     // Create aligned log map
     const alignedLogMap = new Map<string, any[]>();
     alignedLog.forEach(case_ => {
       alignedLogMap.set(case_.caseId, case_.events);
-    });
-
-    console.log('DataProcessor.processData - Aligned log mapping:', {
-      alignedLogCases: alignedLog.length,
-      alignedLogCaseIds: alignedLog.map(c => c.caseId),
-      alignedLogMapKeys: Array.from(alignedLogMap.keys())
     });
 
     // Build constraint-level grouping and statistics from traceConstraintMap
@@ -739,6 +554,9 @@ export class DataProcessor {
     const dashboardConstraints: DashboardConstraint[] = constraints.map(constraint => {
       // Use the new constraint-level statistics instead of analysisOverview
       const newStats = constraintLevelDetail.constraintStatsMap.get(constraint.id);
+      
+      // Find tagged constraint if available
+      const taggedConstraint = taggedConstraints?.find(tc => tc.id === constraint.id);
       
       if (newStats) {
         const totalActivations = newStats.fulfilment + newStats.violation + newStats.vacFulfilment + newStats.vacViolation;
@@ -761,7 +579,7 @@ export class DataProcessor {
           fulfilmentCount: newStats.fulfilment + newStats.vacFulfilment,
           violationRate: violationRate,
           severity: severity,
-          tag: {
+          tag: taggedConstraint?.tag || {
             priority: 'MEDIUM',
             quality: false,
             efficiency: false,
@@ -786,7 +604,7 @@ export class DataProcessor {
           fulfilmentCount: 0,
           violationRate: 0,
           severity: 'LOW' as const,
-          tag: {
+          tag: taggedConstraint?.tag || {
             priority: 'MEDIUM',
             quality: false,
             efficiency: false,
@@ -876,18 +694,6 @@ export class DataProcessor {
       };
     });
     
-    console.log('DataProcessor.processData - Trace analysis:', {
-      totalTraces: dashboardTraces.length,
-      sampleTrace: dashboardTraces[0] ? {
-        caseId: dashboardTraces[0].caseId,
-        fitness: dashboardTraces[0].fitness,
-        violations: dashboardTraces[0].violations,
-        fulfilments: dashboardTraces[0].fulfilments,
-        activations: dashboardTraces[0].activations,
-        eventsCount: dashboardTraces[0].events.length
-      } : null
-    });
-    
     // Calculate overview KPIs
     const totalTraces = dashboardTraces.length;
     const totalConstraints = dashboardConstraints.length;
@@ -897,19 +703,35 @@ export class DataProcessor {
       totalConstraints,
       overallFitness: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => sum + t.fitness, 0) / totalTraces : 0,
       overallConformance: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => {
-        const totalActivations = t.activations;
         const totalViolations = t.violations + t.vacuousViolations;
-        return sum + (totalActivations > 0 ? (totalActivations - totalViolations) / totalActivations : 1);
+        return sum + (totalViolations === 0 ? 1 : 0);
       }, 0) / totalTraces : 0,
-      overallCompliance: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => sum + (t.fitness > 0.8 ? 1 : 0), 0) / totalTraces : 0,
-      overallQuality: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => sum + t.fitness, 0) / totalTraces : 0,
+      overallCompliance: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => {
+        // Get compliance-tagged constraints that this trace violates
+        const complianceConstraints = dashboardConstraints.filter(c => c.tag?.compliance);
+        const violatedComplianceConstraints = complianceConstraints.filter(c => 
+          t.violatedConstraints.includes(c.id)
+        );
+        return sum + (violatedComplianceConstraints.length === 0 ? 1 : 0);
+      }, 0) / totalTraces : 0,
+      overallQuality: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => {
+        // Get quality-tagged constraints that this trace violates
+        const qualityConstraints = dashboardConstraints.filter(c => c.tag?.quality);
+        const violatedQualityConstraints = qualityConstraints.filter(c => 
+          t.violatedConstraints.includes(c.id)
+        );
+        return sum + (violatedQualityConstraints.length === 0 ? 1 : 0);
+      }, 0) / totalTraces : 0,
       overallEfficiency: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => {
-        const totalEvents = t.events.length;
-        const totalModifications = t.insertions + t.deletions;
-        return sum + (totalEvents > 0 ? Math.max(0, 1 - (totalModifications / totalEvents)) : 1);
+        // Get efficiency-tagged constraints that this trace violates
+        const efficiencyConstraints = dashboardConstraints.filter(c => c.tag?.efficiency);
+        const violatedEfficiencyConstraints = efficiencyConstraints.filter(c => 
+          t.violatedConstraints.includes(c.id)
+        );
+        return sum + (violatedEfficiencyConstraints.length === 0 ? 1 : 0);
       }, 0) / totalTraces : 0,
-      criticalViolations: dashboardConstraints.filter(c => c.severity === 'CRITICAL' && c.violationCount > 0).length,
-      highPriorityViolations: dashboardConstraints.filter(c => c.severity === 'HIGH' && c.violationCount > 0).length,
+      criticalViolations: dashboardConstraints.filter(c => c.tag?.priority === 'CRITICAL' && c.violationCount > 0).length,
+      highPriorityViolations: dashboardConstraints.filter(c => c.tag?.priority === 'HIGH' && c.violationCount > 0).length,
       averageInsertions: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => sum + t.insertions, 0) / totalTraces : 0,
       averageDeletions: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => sum + t.deletions, 0) / totalTraces : 0
     };

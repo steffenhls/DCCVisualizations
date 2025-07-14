@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { DashboardConstraint } from '../types';
 import './ConstraintTagging.css';
 
@@ -26,6 +26,11 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
     }))
   );
 
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [selectedActivity, setSelectedActivity] = useState('');
+
   const handleTagChange = useCallback((constraintId: string, field: keyof DashboardConstraint['tag'], value: any) => {
     setTaggedConstraints(prev => 
       prev.map(c => 
@@ -46,6 +51,39 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
     onTaggingComplete(taggedConstraints);
   }, [taggedConstraints, onTaggingComplete]);
 
+  // Get unique constraint types for filter dropdown
+  const constraintTypes = useMemo(() => {
+    const types = new Set(taggedConstraints.map(c => c.type));
+    return Array.from(types).sort();
+  }, [taggedConstraints]);
+
+  // Get unique activities for filter dropdown
+  const activities = useMemo(() => {
+    const allActivities = new Set<string>();
+    taggedConstraints.forEach(constraint => {
+      constraint.activities.forEach(activity => allActivities.add(activity));
+    });
+    return Array.from(allActivities).sort();
+  }, [taggedConstraints]);
+
+  // Filter constraints based on search term, type, and activity
+  const filteredConstraints = useMemo(() => {
+    return taggedConstraints.filter(constraint => {
+      const matchesSearch = searchTerm === '' || 
+        constraint.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        constraint.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        constraint.helpText.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        constraint.activities.some(activity => 
+          activity.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      
+      const matchesType = selectedType === '' || constraint.type === selectedType;
+      const matchesActivity = selectedActivity === '' || constraint.activities.includes(selectedActivity);
+      
+      return matchesSearch && matchesType && matchesActivity;
+    });
+  }, [taggedConstraints, searchTerm, selectedType, selectedActivity]);
+
   return (
     <div className="constraint-tagging">
       <div className="tagging-header">
@@ -53,21 +91,68 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
           ← Back to Upload
         </button>
         <h2>Constraint Tagging</h2>
-        <p>Tag constraints with categories and priorities for KPI analysis</p>
-        <div className="tagging-note">
-          <p><strong>Categories:</strong> Quality, Efficiency, Compliance - used for filtering and grouping</p>
-          <p><strong>Priority:</strong> Affects weighted conformance scoring (Low, Medium, High, Critical)</p>
+      </div>
+
+      {/* Filters */}
+      <div className="tagging-filters">
+        <div className="filter-group">
+          <label htmlFor="search-constraints">Search Constraints:</label>
+          <input
+            id="search-constraints"
+            type="text"
+            placeholder="Search by ID, description, activities..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="type-filter">Filter by Type:</label>
+          <select
+            id="type-filter"
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="type-select"
+          >
+            <option value="">All Types</option>
+            {constraintTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="activity-filter">Filter by Activity:</label>
+          <select
+            id="activity-filter"
+            value={selectedActivity}
+            onChange={(e) => setSelectedActivity(e.target.value)}
+            className="activity-select"
+          >
+            <option value="">All Activities</option>
+            {activities.map(activity => (
+              <option key={activity} value={activity}>{activity}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-results">
+          <span>Showing {filteredConstraints.length} of {taggedConstraints.length} constraints</span>
         </div>
       </div>
 
       <div className="constraints-list">
-        {taggedConstraints.map(constraint => (
+        {filteredConstraints.map(constraint => (
           <div key={constraint.id} className="constraint-item">
             <div className="constraint-info">
               <h3 className="constraint-id-code">{constraint.id}</h3>
               <p className="constraint-description">{constraint.helpText}</p>
               <div className="constraint-activities">
                 <strong>Activities:</strong> {constraint.activities.join(', ')}
+              </div>
+              <div className="constraint-type">
+                <strong>Type:</strong> {constraint.type}
               </div>
             </div>
 
@@ -118,6 +203,22 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
           </div>
         ))}
       </div>
+
+      {filteredConstraints.length === 0 && (
+        <div className="no-results">
+          <p>No constraints match your current filters.</p>
+          <button 
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedType('');
+              setSelectedActivity('');
+            }}
+            className="clear-filters-button"
+          >
+            Clear All Filters
+          </button>
+        </div>
+      )}
 
       <div className="tagging-actions">
         <button 

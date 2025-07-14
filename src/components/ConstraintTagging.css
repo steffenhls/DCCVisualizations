@@ -226,6 +226,119 @@
   transform: translateY(1px);
 }
 
+/* Filter styles */
+.tagging-filters {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid #e9ecef;
+}
+
+.tagging-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 200px;
+  flex: 1;
+}
+
+.tagging-filters label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+  margin-bottom: 0.25rem;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.search-input,
+.type-select,
+.activity-select {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  color: #495057;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  height: 42px;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
+.search-input:focus,
+.type-select:focus,
+.activity-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.search-input::placeholder {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.filter-results {
+  margin-left: auto;
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+  align-self: flex-end;
+  padding-bottom: 0.75rem;
+  height: 42px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.no-results {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 2rem 0;
+  border: 1px solid #e9ecef;
+}
+
+.no-results p {
+  color: #6c757d;
+  font-size: 16px;
+  margin-bottom: 1rem;
+}
+
+.clear-filters-button {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clear-filters-button:hover {
+  background: #5a6268;
+}
+
+/* Add constraint type display */
+.constraint-type {
+  margin-top: 0.5rem;
+  font-size: 12px;
+  color: #6c757d;
+  background: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .constraint-tagging {
@@ -247,5 +360,23 @@
     top: auto;
     left: auto;
     margin-bottom: 20px;
+  }
+} 
+
+/* Responsive design for filters */
+@media (max-width: 768px) {
+  .tagging-filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .tagging-filters .filter-group {
+    min-width: auto;
+  }
+  
+  .filter-results {
+    margin-left: 0;
+    text-align: center;
   }
 } 

@@ -33,6 +33,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [traceFilter, setTraceFilter] = useState<TraceFilter>({});
   const [traceSort, setTraceSort] = useState<TraceSort>({ field: 'caseId', direction: 'asc' });
   const [showTraceDetail, setShowTraceDetail] = useState(false);
+  const [initialConstraintFilter, setInitialConstraintFilter] = useState<string | null>(null);
 
   // Process uploaded files
   useEffect(() => {
@@ -131,7 +132,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           replayOverview,
           analysisDetail,
           eventLog,
-          alignedLog
+          alignedLog,
+          taggedConstraints
         );
 
         console.log('AnalysisDashboard - Processing results:', {
@@ -143,21 +145,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         setOverview(processed.overview);
         setTraces(processed.dashboardTraces);
         setModelVisualization(processed.modelVisualization);
-        
-        // Merge processed constraints with tagging information
-        const mergedConstraints = processed.dashboardConstraints.map(processedConstraint => {
-          const taggedConstraint = taggedConstraints.find(tc => tc.id === processedConstraint.id);
-          return {
-            ...processedConstraint,
-            tag: taggedConstraint?.tag || {
-              priority: 'MEDIUM',
-              quality: false,
-              efficiency: false,
-              compliance: false,
-            }
-          };
-        });
-        setProcessedConstraints(mergedConstraints);
+        setProcessedConstraints(processed.dashboardConstraints);
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to process files');
@@ -170,6 +158,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       processFiles();
     }
   }, [uploadedFiles, taggedConstraints]);
+
+  // Reset trace filtering when leaving traces view
+  useEffect(() => {
+    if (activeView !== 'traces') {
+      setTraceFilter({});
+      setTraceSort({ field: 'caseId', direction: 'asc' });
+    }
+  }, [activeView]);
 
   // Helper function to read file as text
   const readFileAsText = (file: File): Promise<string> => {
@@ -274,6 +270,62 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     setActiveView('traces');
   }, [traceFilter]);
 
+  const handleNavigateToTraces = useCallback(() => {
+    // Navigate to traces view
+    setActiveView('traces');
+  }, []);
+
+  const handleNavigateToConstraints = useCallback(() => {
+    // Navigate to constraints view
+    setActiveView('constraints');
+  }, []);
+
+  const handleNavigateToTracesWithFitnessSort = useCallback(() => {
+    // Set trace sort to fitness low to high
+    setTraceSort({ field: 'fitness', direction: 'asc' });
+    // Navigate to traces view
+    setActiveView('traces');
+  }, []);
+
+  const handleNavigateToConstraintsWithCompliance = useCallback(() => {
+    // Navigate to constraints view with compliance filter
+    setInitialConstraintFilter('compliance');
+    setActiveView('constraints');
+  }, []);
+
+  const handleNavigateToConstraintsWithQuality = useCallback(() => {
+    // Navigate to constraints view with quality filter
+    setInitialConstraintFilter('quality');
+    setActiveView('constraints');
+  }, []);
+
+  const handleNavigateToConstraintsWithEfficiency = useCallback(() => {
+    // Navigate to constraints view with efficiency filter
+    setInitialConstraintFilter('efficiency');
+    setActiveView('constraints');
+  }, []);
+
+  const handleNavigateToConstraintsWithCriticalPriority = useCallback(() => {
+    // Navigate to constraints view with critical priority filter
+    setInitialConstraintFilter('critical');
+    setActiveView('constraints');
+  }, []);
+
+  const handleNavigateToConstraintsWithHighPriority = useCallback(() => {
+    // Navigate to constraints view with high priority filter
+    setInitialConstraintFilter('high');
+    setActiveView('constraints');
+  }, []);
+
+  const handleNavigateToTracesWithVisibleConstraints = useCallback((visibleConstraintIds: string[]) => {
+    // Navigate to traces view with constraint filtering based on visible constraints
+    setTraceFilter({
+      ...traceFilter,
+      constraintTypes: visibleConstraintIds
+    });
+    setActiveView('traces');
+  }, [traceFilter]);
+
   if (loading) {
     return (
       <div className="analysis-dashboard">
@@ -336,6 +388,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             overview={overview} 
             modelVisualization={modelVisualization} 
             onConstraintClick={handleConstraintClick}
+            onNavigateToTraces={handleNavigateToTraces}
+            onNavigateToConstraints={handleNavigateToConstraints}
+            onNavigateToTracesWithFitnessSort={handleNavigateToTracesWithFitnessSort}
+            onNavigateToConstraintsWithCompliance={handleNavigateToConstraintsWithCompliance}
+            onNavigateToConstraintsWithQuality={handleNavigateToConstraintsWithQuality}
+            onNavigateToConstraintsWithEfficiency={handleNavigateToConstraintsWithEfficiency}
+            onNavigateToConstraintsWithCriticalPriority={handleNavigateToConstraintsWithCriticalPriority}
+            onNavigateToConstraintsWithHighPriority={handleNavigateToConstraintsWithHighPriority}
           />
         )}
 
@@ -344,6 +404,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             constraints={processedConstraints} 
             modelVisualization={modelVisualization}
             onConstraintClick={handleConstraintClick}
+            initialFilter={initialConstraintFilter}
+            onFilterSet={() => setInitialConstraintFilter(null)}
+            onNavigateToTracesWithVisibleConstraints={handleNavigateToTracesWithVisibleConstraints}
           />
         )}
 
@@ -356,6 +419,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             setTraceSort={setTraceSort}
             onTraceClick={handleTraceClick}
             processedConstraints={processedConstraints}
+            totalTraces={traces.length}
           />
         )}
       </div>
@@ -376,44 +440,144 @@ const OverviewView: React.FC<{
   overview: DashboardOverview;
   modelVisualization: ModelVisualization | null;
   onConstraintClick?: (constraintId: string) => void;
-}> = ({ overview, modelVisualization, onConstraintClick }) => {
+  onNavigateToTraces?: () => void;
+  onNavigateToConstraints?: () => void;
+  onNavigateToTracesWithFitnessSort?: () => void;
+  onNavigateToConstraintsWithCompliance?: () => void;
+  onNavigateToConstraintsWithQuality?: () => void;
+  onNavigateToConstraintsWithEfficiency?: () => void;
+  onNavigateToConstraintsWithCriticalPriority?: () => void;
+  onNavigateToConstraintsWithHighPriority?: () => void;
+}> = ({ overview, modelVisualization, onConstraintClick, onNavigateToTraces, onNavigateToConstraints, onNavigateToTracesWithFitnessSort, onNavigateToConstraintsWithCompliance, onNavigateToConstraintsWithQuality, onNavigateToConstraintsWithEfficiency, onNavigateToConstraintsWithCriticalPriority, onNavigateToConstraintsWithHighPriority }) => {
+  
+  const handleMouseEnter = (event: React.MouseEvent, tooltip: string) => {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    
+    // Create tooltip element
+    const tooltipEl = document.createElement('div');
+    tooltipEl.textContent = tooltip;
+    tooltipEl.style.cssText = `
+      position: fixed;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      max-width: 250px;
+      text-align: center;
+      z-index: 10000;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      white-space: normal;
+      word-wrap: break-word;
+    `;
+    
+    // Position tooltip above the card
+    tooltipEl.style.left = `${rect.left + rect.width / 2}px`;
+    tooltipEl.style.top = `${rect.top - 10}px`;
+    tooltipEl.style.transform = 'translateX(-50%) translateY(-100%)';
+    
+    tooltipEl.id = 'custom-tooltip';
+    document.body.appendChild(tooltipEl);
+  };
+
+  const handleMouseLeave = () => {
+    const tooltip = document.getElementById('custom-tooltip');
+    if (tooltip) {
+      tooltip.remove();
+    }
+  };
+
   return (
     <div className="overview-view">
       {/* KPI Cards */}
       <div className="kpi-grid">
-        <div className="kpi-card">
+        <div 
+          className="kpi-card clickable" 
+          onClick={onNavigateToTraces}
+          style={{ cursor: onNavigateToTraces ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Total number of process traces analyzed. Click to view all traces.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Total Traces</h3>
           <div className="kpi-value">{overview.totalTraces}</div>
         </div>
-        <div className="kpi-card">
+        <div 
+          className="kpi-card clickable" 
+          onClick={onNavigateToConstraints}
+          style={{ cursor: onNavigateToConstraints ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Total number of DECLARE constraints in the process model. Click to view all constraints.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Total Constraints</h3>
           <div className="kpi-value">{overview.totalConstraints}</div>
         </div>
-        <div className="kpi-card">
+        <div 
+          className="kpi-card clickable" 
+          onClick={onNavigateToTracesWithFitnessSort}
+          style={{ cursor: onNavigateToTracesWithFitnessSort ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Average fitness across all traces. Click to view traces sorted by fitness (low to high).")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Overall Fitness</h3>
           <div className="kpi-value">{(overview.overallFitness * 100).toFixed(1)}%</div>
         </div>
-        <div className="kpi-card">
+        <div 
+          className="kpi-card"
+          onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that have no constraint violations.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Overall Conformance</h3>
           <div className="kpi-value">{(overview.overallConformance * 100).toFixed(1)}%</div>
         </div>
-        <div className="kpi-card">
+        <div 
+          className="kpi-card clickable" 
+          onClick={onNavigateToConstraintsWithCompliance}
+          style={{ cursor: onNavigateToConstraintsWithCompliance ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that do not violate compliance constraints. Click to view compliance constraints.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Overall Compliance</h3>
           <div className="kpi-value">{(overview.overallCompliance * 100).toFixed(1)}%</div>
         </div>
-        <div className="kpi-card">
+        <div 
+          className="kpi-card clickable" 
+          onClick={onNavigateToConstraintsWithQuality}
+          style={{ cursor: onNavigateToConstraintsWithQuality ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that do not violate quality constraints. Click to view quality constraints.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Overall Quality</h3>
           <div className="kpi-value">{(overview.overallQuality * 100).toFixed(1)}%</div>
         </div>
-        <div className="kpi-card">
+        <div 
+          className="kpi-card clickable" 
+          onClick={onNavigateToConstraintsWithEfficiency}
+          style={{ cursor: onNavigateToConstraintsWithEfficiency ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that do not violate efficiency constraints. Click to view efficiency constraints.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Overall Efficiency</h3>
           <div className="kpi-value">{(overview.overallEfficiency * 100).toFixed(1)}%</div>
         </div>
-        <div className="kpi-card critical">
+        <div 
+          className="kpi-card critical clickable" 
+          onClick={onNavigateToConstraintsWithCriticalPriority}
+          style={{ cursor: onNavigateToConstraintsWithCriticalPriority ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Number of critical priority constraints with violations. Click to view critical constraints.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>Critical Violations</h3>
           <div className="kpi-value">{overview.criticalViolations}</div>
         </div>
-        <div className="kpi-card warning">
+        <div 
+          className="kpi-card warning clickable" 
+          onClick={onNavigateToConstraintsWithHighPriority}
+          style={{ cursor: onNavigateToConstraintsWithHighPriority ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Number of high priority constraints with violations. Click to view high priority constraints.")}
+          onMouseLeave={handleMouseLeave}
+        >
           <h3>High Priority Violations</h3>
           <div className="kpi-value">{overview.highPriorityViolations}</div>
         </div>
@@ -438,7 +602,10 @@ const ConstraintsView: React.FC<{
   constraints: DashboardConstraint[];
   modelVisualization: ModelVisualization | null;
   onConstraintClick: (constraintId: string) => void;
-}> = ({ constraints, modelVisualization, onConstraintClick }) => {
+  initialFilter: string | null;
+  onFilterSet: () => void;
+  onNavigateToTracesWithVisibleConstraints: (visibleConstraintIds: string[]) => void;
+}> = ({ constraints, modelVisualization, onConstraintClick, initialFilter, onFilterSet, onNavigateToTracesWithVisibleConstraints }) => {
   const [constraintFilter, setConstraintFilter] = useState({
     priority: '',
     categories: [] as string[],
@@ -450,6 +617,26 @@ const ConstraintsView: React.FC<{
     field: 'id' as 'id' | 'violationCount' | 'fulfilmentCount' | 'violationRate' | 'priority',
     direction: 'asc' as 'asc' | 'desc'
   });
+
+  // Handle initial filter
+  useEffect(() => {
+    if (initialFilter) {
+      if (initialFilter === 'critical' || initialFilter === 'high') {
+        // Set priority filter
+        setConstraintFilter(prev => ({
+          ...prev,
+          priority: initialFilter.toUpperCase()
+        }));
+      } else {
+        // Set category filter
+        setConstraintFilter(prev => ({
+          ...prev,
+          categories: [initialFilter]
+        }));
+      }
+      onFilterSet(); // Clear the initial filter after setting it
+    }
+  }, [initialFilter, onFilterSet]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -534,8 +721,24 @@ const ConstraintsView: React.FC<{
     return filtered;
   }, [constraints, constraintFilter, constraintSort]);
 
+  const handleShowTracesForVisibleConstraints = useCallback(() => {
+    const visibleConstraints = filteredAndSortedConstraints();
+    const visibleConstraintIds = visibleConstraints.map(constraint => constraint.id);
+    onNavigateToTracesWithVisibleConstraints(visibleConstraintIds);
+  }, [filteredAndSortedConstraints, onNavigateToTracesWithVisibleConstraints]);
+
   return (
     <div className="constraints-view">
+      {/* Action Button */}
+      <div className="constraints-action-bar">
+        <button 
+          className="show-traces-button"
+          onClick={handleShowTracesForVisibleConstraints}
+        >
+          Show Traces for Visible Constraints ({filteredAndSortedConstraints().length})
+        </button>
+      </div>
+
       {/* Filters */}
       <div className="constraint-filters">
         <div className="filter-group">
@@ -749,7 +952,8 @@ const TracesView: React.FC<{
   setTraceSort: (sort: TraceSort) => void;
   onTraceClick: (trace: DashboardTrace) => void;
   processedConstraints: DashboardConstraint[];
-}> = ({ traces, traceFilter, setTraceFilter, traceSort, setTraceSort, onTraceClick, processedConstraints }) => {
+  totalTraces: number;
+}> = ({ traces, traceFilter, setTraceFilter, traceSort, setTraceSort, onTraceClick, processedConstraints, totalTraces }) => {
   return (
     <div className="traces-view">
       {/* Filters */}
@@ -889,6 +1093,11 @@ const TracesView: React.FC<{
           <option value="violations-asc">Violations (Low-High)</option>
           <option value="violations-desc">Violations (High-Low)</option>
         </select>
+      </div>
+
+      {/* Results count */}
+      <div className="traces-results">
+        <p>Showing {traces.length} of {totalTraces} traces</p>
       </div>
 
       {/* Traces Table */}
