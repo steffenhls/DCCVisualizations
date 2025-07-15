@@ -9,7 +9,8 @@ import {
 } from '../types';
 import { DataProcessor } from '../utils/dataProcessor';
 import CytoscapeModel from './CytoscapeModel';
-import { ResourceView, TimeView } from './ExperimentalView';
+import ResourceView from './ResourceView';
+import TimeView from './TimeView';
 import './AnalysisDashboard.css';
 
 interface AnalysisDashboardProps {
@@ -166,6 +167,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       setTraceFilter({});
       setTraceSort({ field: 'caseId', direction: 'asc' });
     }
+  }, [activeView]);
+
+  // Scroll to top when tab changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
   }, [activeView]);
 
   // Helper function to read file as text
@@ -359,7 +365,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         <button onClick={onBack} className="back-button">
           ← Back to Tagging
         </button>
-        <h1>Conformance Analysis Dashboard</h1>
+      </div>
+
+      {/* Content with Integrated Tabs */}
+      <div className="dashboard-content">
+        {/* Tab Navigation */}
         <div className="view-tabs">
           <button
             className={`tab ${activeView === 'overview' ? 'active' : ''}`}
@@ -392,63 +402,63 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             Time
           </button>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="dashboard-content">
-        {activeView === 'overview' && overview && (
-          <OverviewView 
-            overview={overview} 
-            modelVisualization={modelVisualization} 
-            onConstraintClick={handleConstraintClick}
-            onNavigateToTraces={handleNavigateToTraces}
-            onNavigateToConstraints={handleNavigateToConstraints}
-            onNavigateToTracesWithFitnessSort={handleNavigateToTracesWithFitnessSort}
-            onNavigateToConstraintsWithCompliance={handleNavigateToConstraintsWithCompliance}
-            onNavigateToConstraintsWithQuality={handleNavigateToConstraintsWithQuality}
-            onNavigateToConstraintsWithEfficiency={handleNavigateToConstraintsWithEfficiency}
-            onNavigateToConstraintsWithCriticalPriority={handleNavigateToConstraintsWithCriticalPriority}
-            onNavigateToConstraintsWithHighPriority={handleNavigateToConstraintsWithHighPriority}
-          />
-        )}
+        {/* View Content */}
+        <div className="view-content">
+          {activeView === 'overview' && overview && (
+            <OverviewView 
+              overview={overview} 
+              modelVisualization={modelVisualization} 
+              onConstraintClick={handleConstraintClick}
+              onNavigateToTraces={handleNavigateToTraces}
+              onNavigateToConstraints={handleNavigateToConstraints}
+              onNavigateToTracesWithFitnessSort={handleNavigateToTracesWithFitnessSort}
+              onNavigateToConstraintsWithCompliance={handleNavigateToConstraintsWithCompliance}
+              onNavigateToConstraintsWithQuality={handleNavigateToConstraintsWithQuality}
+              onNavigateToConstraintsWithEfficiency={handleNavigateToConstraintsWithEfficiency}
+              onNavigateToConstraintsWithCriticalPriority={handleNavigateToConstraintsWithCriticalPriority}
+              onNavigateToConstraintsWithHighPriority={handleNavigateToConstraintsWithHighPriority}
+            />
+          )}
 
-        {activeView === 'constraints' && (
-          <ConstraintsView 
-            constraints={processedConstraints} 
-            modelVisualization={modelVisualization}
-            onConstraintClick={handleConstraintClick}
-            initialFilter={initialConstraintFilter}
-            onFilterSet={() => setInitialConstraintFilter(null)}
-            onNavigateToTracesWithVisibleConstraints={handleNavigateToTracesWithVisibleConstraints}
-          />
-        )}
+          {activeView === 'constraints' && (
+            <ConstraintsView 
+              constraints={processedConstraints} 
+              modelVisualization={modelVisualization}
+              onConstraintClick={handleConstraintClick}
+              initialFilter={initialConstraintFilter}
+              onFilterSet={() => setInitialConstraintFilter(null)}
+              onNavigateToTracesWithVisibleConstraints={handleNavigateToTracesWithVisibleConstraints}
+            />
+          )}
 
-        {activeView === 'traces' && (
-          <TracesView
-            traces={filteredAndSortedTraces()}
-            traceFilter={traceFilter}
-            setTraceFilter={setTraceFilter}
-            traceSort={traceSort}
-            setTraceSort={setTraceSort}
-            onTraceClick={handleTraceClick}
-            processedConstraints={processedConstraints}
-            totalTraces={traces.length}
-          />
-        )}
+          {activeView === 'traces' && (
+            <TracesView
+              traces={filteredAndSortedTraces()}
+              traceFilter={traceFilter}
+              setTraceFilter={setTraceFilter}
+              traceSort={traceSort}
+              setTraceSort={setTraceSort}
+              onTraceClick={handleTraceClick}
+              processedConstraints={processedConstraints}
+              totalTraces={traces.length}
+            />
+          )}
 
-        {activeView === 'resource' && (
-          <ResourceView 
-            traces={traces}
-            constraints={processedConstraints}
-          />
-        )}
+          {activeView === 'resource' && (
+            <ResourceView 
+              traces={traces}
+              constraints={processedConstraints}
+            />
+          )}
 
-        {activeView === 'time' && (
-          <TimeView 
-            traces={traces}
-            constraints={processedConstraints}
-          />
-        )}
+          {activeView === 'time' && (
+            <TimeView 
+              traces={traces}
+              constraints={processedConstraints}
+            />
+          )}
+        </div>
       </div>
 
       {/* Trace Detail Modal */}

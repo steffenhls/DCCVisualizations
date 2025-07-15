@@ -4,18 +4,6 @@
   padding: 2rem;
 }
 
-.dashboard-header {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
 .back-button {
   align-self: flex-start;
   background: #6c757d;
@@ -41,24 +29,35 @@
   text-align: center;
 }
 
+.dashboard-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-height: 600px;
+  overflow: hidden;
+}
+
 .view-tabs {
   display: flex;
-  gap: 1rem;
   background: #f8f9fa;
-  padding: 0.5rem;
-  border-radius: 8px;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0;
+  margin: 0;
+  border-radius: 12px 12px 0 0;
 }
 
 .tab {
   background: transparent;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
+  padding: 1rem 2rem;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
   color: #6c757d;
   transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  flex: 1;
+  text-align: center;
 }
 
 .tab:hover {
@@ -67,16 +66,13 @@
 }
 
 .tab.active {
-  background: #3498db;
-  color: white;
+  background: white;
+  color: #3498db;
+  border-bottom-color: #3498db;
 }
 
-.dashboard-content {
-  background: white;
-  border-radius: 12px;
+.view-content {
   padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  min-height: 600px;
 }
 
 /* Loading and Error States */
@@ -1584,14 +1580,20 @@
   
   .view-tabs {
     flex-direction: column;
-    width: 100%;
+    border-radius: 12px 12px 0 0;
   }
   
   .tab {
     width: 100%;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
   }
   
-  .dashboard-content {
+  .tab.active {
+    border-bottom-color: #3498db;
+  }
+  
+  .view-content {
     padding: 1rem;
   }
   

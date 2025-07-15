@@ -73,6 +73,11 @@ const App: React.FC = () => {
     processConstraints();
   }, [uploadedFiles.declarativeModel]);
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentStep]);
+
   // Helper function to read file as text
   const readFileAsText = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -136,10 +141,12 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      <div className="app-header">
-        <h1>Declarative Conformance Analysis</h1>
-        <p>Upload your files, tag constraints, and analyze process conformance with DECLARE constraints</p>
-      </div>
+      {currentStep === 0 && (
+        <div className="app-header">
+          <h1>Declarative Conformance Analysis</h1>
+          <p>Upload your files, tag constraints, and analyze process conformance with DECLARE constraints</p>
+        </div>
+      )}
 
       <div className="app-progress">
         {steps.map((step, index) => (
