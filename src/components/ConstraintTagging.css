@@ -136,34 +136,45 @@
   display: flex;
   flex-direction: row;
   gap: 32px;
-  align-items: center;
+  align-items: flex-start;
   padding-top: 15px;
   border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 15px;
 }
 
 .priority-control,
-.category-controls {
+.category-controls,
+.group-control {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 180px;
-}
-
-.category-controls {
-  margin-left: 0;
+  flex: 1;
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
 }
 
 .priority-control label,
-.category-controls label {
+.category-controls label,
+.group-control label {
   font-weight: 600;
   color: #2c3e50;
   font-size: 14px;
   line-height: 1;
   margin-bottom: 8px;
   display: block;
+  height: 20px;
+  display: flex;
+  align-items: center;
 }
 
-.priority-control select {
+.priority-control select,
+.group-control select {
   padding: 8px 12px;
   border: 1px solid #ced4da;
   border-radius: 6px;
@@ -171,9 +182,14 @@
   background: white;
   color: #495057;
   min-width: 120px;
+  height: 42px;
+  box-sizing: border-box;
+  line-height: 1.2;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.priority-control select:focus {
+.priority-control select:focus,
+.group-control select:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
@@ -181,8 +197,10 @@
 
 .checkbox-group {
   display: flex;
-  flex-direction: row;
-  gap: 16px;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 42px;
+  justify-content: center;
 }
 
 .checkbox-group label {
@@ -193,12 +211,22 @@
   color: #495057;
   font-size: 14px;
   cursor: pointer;
+  margin: 0;
+  height: auto;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+
+.checkbox-group label:hover {
+  color: #007bff;
 }
 
 .checkbox-group input[type="checkbox"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
+  margin: 0;
+  accent-color: #007bff;
 }
 
 .tagging-actions {
@@ -260,7 +288,8 @@
 
 .search-input,
 .type-select,
-.activity-select {
+.activity-select,
+.group-select {
   padding: 0.75rem 1rem;
   border: 1px solid #ced4da;
   border-radius: 6px;
@@ -275,7 +304,8 @@
 
 .search-input:focus,
 .type-select:focus,
-.activity-select:focus {
+.activity-select:focus,
+.group-select:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
@@ -339,7 +369,165 @@
   display: inline-block;
 }
 
-/* Responsive design */
+/* Group Management Styles */
+.group-management-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid #e9ecef;
+}
+
+.group-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.group-management-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.group-manager-toggle {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.group-manager-toggle:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.group-manager {
+  border-top: 1px solid #dee2e6;
+  padding-top: 1rem;
+}
+
+.group-creator {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.group-name-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.group-name-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.add-group-button {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.add-group-button:hover:not(:disabled) {
+  background: #229954;
+  transform: translateY(-1px);
+}
+
+.add-group-button:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.groups-list h4 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.no-groups {
+  color: #6c757d;
+  font-style: italic;
+  margin: 0;
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px dashed #dee2e6;
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.group-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.group-item:hover {
+  border-color: #3498db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.group-name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.remove-group-button {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.remove-group-button:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
+/* Group filter and control styles */
+/* .group-select styling is now included in the shared filter input styles above */
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .constraint-tagging {
     padding: 15px;
@@ -378,5 +566,22 @@
   .filter-results {
     margin-left: 0;
     text-align: center;
+  }
+} 
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .group-management-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .group-creator {
+    flex-direction: column;
+  }
+  
+  .groups-grid {
+    grid-template-columns: 1fr;
   }
 } 

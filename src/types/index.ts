@@ -87,6 +87,7 @@ export interface DashboardConstraint {
     quality: boolean;
     efficiency: boolean;
     compliance: boolean;
+    group?: string; // New field for grouping
   };
 }
 

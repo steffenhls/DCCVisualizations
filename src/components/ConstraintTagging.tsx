@@ -21,15 +21,22 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
         priority: 'MEDIUM' as const,
         quality: false,
         efficiency: false,
-        compliance: false
+        compliance: false,
+        group: undefined
       }
     }))
   );
+
+  // Group management state
+  const [groups, setGroups] = useState<string[]>([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [showGroupManager, setShowGroupManager] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedActivity, setSelectedActivity] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('');
 
   const handleTagChange = useCallback((constraintId: string, field: keyof DashboardConstraint['tag'], value: any) => {
     setTaggedConstraints(prev => 
@@ -51,6 +58,58 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
     onTaggingComplete(taggedConstraints);
   }, [taggedConstraints, onTaggingComplete]);
 
+  // Group management functions
+  const handleAddGroup = useCallback(() => {
+    if (newGroupName.trim() && !groups.includes(newGroupName.trim())) {
+      setGroups(prev => [...prev, newGroupName.trim()]);
+      setNewGroupName('');
+    }
+  }, [newGroupName, groups]);
+
+  const handleRemoveGroup = useCallback((groupName: string) => {
+    setGroups(prev => prev.filter(g => g !== groupName));
+    // Remove group from all constraints that have it
+    setTaggedConstraints(prev => 
+      prev.map(c => 
+        c.tag?.group === groupName 
+          ? { ...c, tag: { ...c.tag, group: undefined } }
+          : c
+      )
+    );
+  }, []);
+
+  const handleAssignGroup = useCallback((constraintId: string, groupName: string | undefined) => {
+    handleTagChange(constraintId, 'group', groupName);
+  }, [handleTagChange]);
+
+  // Handle group filter change with special case for "+ Create Group"
+  const handleGroupFilterChange = useCallback((value: string) => {
+    if (value === '+create') {
+      setShowGroupManager(true);
+      // Scroll to bottom after a short delay to ensure the group manager is rendered
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
+      setSelectedGroup(''); // Reset the filter selection
+    } else {
+      setSelectedGroup(value);
+    }
+  }, []);
+
+  // Handle group control change with special case for "+ Create Group"
+  const handleGroupControlChange = useCallback((constraintId: string, value: string) => {
+    if (value === '+create') {
+      setShowGroupManager(true);
+      // Scroll to bottom after a short delay to ensure the group manager is rendered
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
+      // Don't change the constraint's group, just scroll to the manager
+    } else {
+      handleAssignGroup(constraintId, value || undefined);
+    }
+  }, [handleAssignGroup]);
+
   // Get unique constraint types for filter dropdown
   const constraintTypes = useMemo(() => {
     const types = new Set(taggedConstraints.map(c => c.type));
@@ -66,7 +125,7 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
     return Array.from(allActivities).sort();
   }, [taggedConstraints]);
 
-  // Filter constraints based on search term, type, and activity
+  // Filter constraints based on search term, type, activity, and group
   const filteredConstraints = useMemo(() => {
     return taggedConstraints.filter(constraint => {
       const matchesSearch = searchTerm === '' || 
@@ -79,10 +138,11 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
       
       const matchesType = selectedType === '' || constraint.type === selectedType;
       const matchesActivity = selectedActivity === '' || constraint.activities.includes(selectedActivity);
+      const matchesGroup = selectedGroup === '' || constraint.tag?.group === selectedGroup;
       
-      return matchesSearch && matchesType && matchesActivity;
+      return matchesSearch && matchesType && matchesActivity && matchesGroup;
     });
-  }, [taggedConstraints, searchTerm, selectedType, selectedActivity]);
+  }, [taggedConstraints, searchTerm, selectedType, selectedActivity, selectedGroup]);
 
   return (
     <div className="constraint-tagging">
@@ -90,7 +150,6 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
         <button onClick={onBack} className="back-button">
           ← Back to Upload
         </button>
-        <h2>Constraint Tagging</h2>
       </div>
 
       {/* Filters */}
@@ -134,6 +193,22 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
             {activities.map(activity => (
               <option key={activity} value={activity}>{activity}</option>
             ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="group-filter">Filter by Group:</label>
+          <select
+            id="group-filter"
+            value={selectedGroup}
+            onChange={(e) => handleGroupFilterChange(e.target.value)}
+            className="group-select"
+          >
+            <option value="">All Groups</option>
+            {groups.map(group => (
+              <option key={group} value={group}>{group}</option>
+            ))}
+            <option value="+create">+ Create Group</option>
           </select>
         </div>
 
@@ -199,6 +274,20 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
                   </label>
                 </div>
               </div>
+
+              <div className="group-control">
+                <label>Group:</label>
+                <select
+                  value={constraint.tag?.group || ''}
+                  onChange={(e) => handleGroupControlChange(constraint.id, e.target.value)}
+                >
+                  <option value="">No Group</option>
+                  {groups.map(group => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                  <option value="+create">+ Create Group</option>
+                </select>
+              </div>
             </div>
           </div>
         ))}
@@ -212,6 +301,7 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
               setSearchTerm('');
               setSelectedType('');
               setSelectedActivity('');
+              setSelectedGroup('');
             }}
             className="clear-filters-button"
           >
@@ -219,6 +309,62 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
           </button>
         </div>
       )}
+
+      {/* Group Management Section - Moved to bottom */}
+      <div className="group-management-section">
+        <div className="group-management-header">
+          <h3>Constraint Groups</h3>
+          <button 
+            className="group-manager-toggle"
+            onClick={() => setShowGroupManager(!showGroupManager)}
+          >
+            {showGroupManager ? 'Hide' : 'Show'} Group Manager
+          </button>
+        </div>
+
+        {showGroupManager && (
+          <div className="group-manager">
+            <div className="group-creator">
+              <input
+                type="text"
+                placeholder="Enter group name..."
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddGroup()}
+                className="group-name-input"
+              />
+              <button 
+                onClick={handleAddGroup}
+                disabled={!newGroupName.trim() || groups.includes(newGroupName.trim())}
+                className="add-group-button"
+              >
+                Add Group
+              </button>
+            </div>
+
+            <div className="groups-list">
+              <h4>Existing Groups:</h4>
+              {groups.length === 0 ? (
+                <p className="no-groups">No groups created yet. Create groups to organize constraints by activities, types, or domain-specific knowledge.</p>
+              ) : (
+                <div className="groups-grid">
+                  {groups.map(group => (
+                    <div key={group} className="group-item">
+                      <span className="group-name">{group}</span>
+                      <button 
+                        onClick={() => handleRemoveGroup(group)}
+                        className="remove-group-button"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="tagging-actions">
         <button 

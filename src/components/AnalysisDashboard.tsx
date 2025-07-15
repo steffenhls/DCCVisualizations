@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   DashboardOverview, 
   DashboardConstraint, 
@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { DataProcessor } from '../utils/dataProcessor';
 import CytoscapeModel from './CytoscapeModel';
+import { ResourceView, TimeView } from './ExperimentalView';
 import './AnalysisDashboard.css';
 
 interface AnalysisDashboardProps {
@@ -28,7 +29,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [processedConstraints, setProcessedConstraints] = useState<DashboardConstraint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'overview' | 'constraints' | 'traces'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'constraints' | 'traces' | 'resource' | 'time'>('overview');
   const [selectedTrace, setSelectedTrace] = useState<DashboardTrace | null>(null);
   const [traceFilter, setTraceFilter] = useState<TraceFilter>({});
   const [traceSort, setTraceSort] = useState<TraceSort>({ field: 'caseId', direction: 'asc' });
@@ -378,6 +379,18 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           >
             Traces
           </button>
+          <button
+            className={`tab ${activeView === 'resource' ? 'active' : ''}`}
+            onClick={() => setActiveView('resource')}
+          >
+            Resource
+          </button>
+          <button
+            className={`tab ${activeView === 'time' ? 'active' : ''}`}
+            onClick={() => setActiveView('time')}
+          >
+            Time
+          </button>
         </div>
       </div>
 
@@ -422,6 +435,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             totalTraces={traces.length}
           />
         )}
+
+        {activeView === 'resource' && (
+          <ResourceView 
+            traces={traces}
+            constraints={processedConstraints}
+          />
+        )}
+
+        {activeView === 'time' && (
+          <TimeView 
+            traces={traces}
+            constraints={processedConstraints}
+          />
+        )}
       </div>
 
       {/* Trace Detail Modal */}
@@ -453,6 +480,12 @@ const OverviewView: React.FC<{
   const handleMouseEnter = (event: React.MouseEvent, tooltip: string) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
+    
+    // Remove any existing tooltip first
+    const existingTooltip = document.getElementById('custom-tooltip');
+    if (existingTooltip) {
+      existingTooltip.remove();
+    }
     
     // Create tooltip element
     const tooltipEl = document.createElement('div');
@@ -489,36 +522,49 @@ const OverviewView: React.FC<{
     }
   };
 
+  const handleClick = (onClickHandler: (() => void) | undefined) => {
+    // Remove tooltip when clicking
+    const tooltip = document.getElementById('custom-tooltip');
+    if (tooltip) {
+      tooltip.remove();
+    }
+    
+    // Call the original click handler if it exists
+    if (onClickHandler) {
+      onClickHandler();
+    }
+  };
+
   return (
     <div className="overview-view">
       {/* KPI Cards */}
       <div className="kpi-grid">
         <div 
           className="kpi-card clickable" 
-          onClick={onNavigateToTraces}
           style={{ cursor: onNavigateToTraces ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Total number of process traces analyzed. Click to view all traces.")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToTraces)}
         >
           <h3>Total Traces</h3>
           <div className="kpi-value">{overview.totalTraces}</div>
         </div>
         <div 
           className="kpi-card clickable" 
-          onClick={onNavigateToConstraints}
           style={{ cursor: onNavigateToConstraints ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Total number of DECLARE constraints in the process model. Click to view all constraints.")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToConstraints)}
         >
           <h3>Total Constraints</h3>
           <div className="kpi-value">{overview.totalConstraints}</div>
         </div>
         <div 
           className="kpi-card clickable" 
-          onClick={onNavigateToTracesWithFitnessSort}
           style={{ cursor: onNavigateToTracesWithFitnessSort ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Average fitness across all traces. Click to view traces sorted by fitness (low to high).")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToTracesWithFitnessSort)}
         >
           <h3>Overall Fitness</h3>
           <div className="kpi-value">{(overview.overallFitness * 100).toFixed(1)}%</div>
@@ -533,50 +579,50 @@ const OverviewView: React.FC<{
         </div>
         <div 
           className="kpi-card clickable" 
-          onClick={onNavigateToConstraintsWithCompliance}
           style={{ cursor: onNavigateToConstraintsWithCompliance ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that do not violate compliance constraints. Click to view compliance constraints.")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToConstraintsWithCompliance)}
         >
           <h3>Overall Compliance</h3>
           <div className="kpi-value">{(overview.overallCompliance * 100).toFixed(1)}%</div>
         </div>
         <div 
           className="kpi-card clickable" 
-          onClick={onNavigateToConstraintsWithQuality}
           style={{ cursor: onNavigateToConstraintsWithQuality ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that do not violate quality constraints. Click to view quality constraints.")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToConstraintsWithQuality)}
         >
           <h3>Overall Quality</h3>
           <div className="kpi-value">{(overview.overallQuality * 100).toFixed(1)}%</div>
         </div>
         <div 
           className="kpi-card clickable" 
-          onClick={onNavigateToConstraintsWithEfficiency}
           style={{ cursor: onNavigateToConstraintsWithEfficiency ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that do not violate efficiency constraints. Click to view efficiency constraints.")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToConstraintsWithEfficiency)}
         >
           <h3>Overall Efficiency</h3>
           <div className="kpi-value">{(overview.overallEfficiency * 100).toFixed(1)}%</div>
         </div>
         <div 
           className="kpi-card critical clickable" 
-          onClick={onNavigateToConstraintsWithCriticalPriority}
           style={{ cursor: onNavigateToConstraintsWithCriticalPriority ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Number of critical priority constraints with violations. Click to view critical constraints.")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToConstraintsWithCriticalPriority)}
         >
           <h3>Critical Violations</h3>
           <div className="kpi-value">{overview.criticalViolations}</div>
         </div>
         <div 
           className="kpi-card warning clickable" 
-          onClick={onNavigateToConstraintsWithHighPriority}
           style={{ cursor: onNavigateToConstraintsWithHighPriority ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Number of high priority constraints with violations. Click to view high priority constraints.")}
           onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToConstraintsWithHighPriority)}
         >
           <h3>High Priority Violations</h3>
           <div className="kpi-value">{overview.highPriorityViolations}</div>
@@ -611,7 +657,8 @@ const ConstraintsView: React.FC<{
     categories: [] as string[],
     minRate: '',
     maxRate: '',
-    hasViolations: false
+    hasViolations: false,
+    group: ''
   });
   const [constraintSort, setConstraintSort] = useState({
     field: 'id' as 'id' | 'violationCount' | 'fulfilmentCount' | 'violationRate' | 'priority',
@@ -668,6 +715,21 @@ const ConstraintsView: React.FC<{
         }
       }
       
+      // Group filter
+      if (constraintFilter.group) {
+        if (constraintFilter.group === 'Ungrouped') {
+          // For "Ungrouped" filter, show constraints that have no group
+          if (constraint.tag?.group) {
+            return false;
+          }
+        } else {
+          // For specific group filter, show constraints that match the group
+          if (constraint.tag?.group !== constraintFilter.group) {
+            return false;
+          }
+        }
+      }
+      
       // Rate filters
       if (constraintFilter.minRate && constraint.violationRate < parseFloat(constraintFilter.minRate) / 100) {
         return false;
@@ -721,6 +783,60 @@ const ConstraintsView: React.FC<{
     return filtered;
   }, [constraints, constraintFilter, constraintSort]);
 
+  // Group-based aggregation
+  const constraintGroups = useMemo(() => {
+    const groups = new Map<string, {
+      id: string;
+      name: string;
+      constraints: DashboardConstraint[];
+      totalViolations: number;
+      totalFulfilments: number;
+      averageViolationRate: number;
+      severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    }>();
+
+    // Group constraints by their assigned group
+    constraints.forEach(constraint => {
+      const groupName = constraint.tag?.group || 'Ungrouped';
+      
+      if (!groups.has(groupName)) {
+        groups.set(groupName, {
+          id: groupName,
+          name: groupName,
+          constraints: [],
+          totalViolations: 0,
+          totalFulfilments: 0,
+          averageViolationRate: 0,
+          severity: 'MEDIUM'
+        });
+      }
+      
+      const group = groups.get(groupName)!;
+      group.constraints.push(constraint);
+      group.totalViolations += constraint.violationCount;
+      group.totalFulfilments += constraint.fulfilmentCount;
+    });
+
+    // Calculate group statistics
+    groups.forEach(group => {
+      if (group.constraints.length > 0) {
+        // Calculate average violation rate correctly: violations / (violations + fulfilments)
+        const totalActivations = group.totalViolations + group.totalFulfilments;
+        group.averageViolationRate = totalActivations > 0 ? group.totalViolations / totalActivations : 0;
+        
+        // Determine group severity based on highest priority constraint
+        const priorities = group.constraints.map(c => c.tag?.priority || 'MEDIUM');
+        const priorityOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+        const maxPriority = priorities.reduce((max, priority) => 
+          priorityOrder[priority] > priorityOrder[max] ? priority : max, 'MEDIUM'
+        );
+        group.severity = maxPriority;
+      }
+    });
+
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [constraints]);
+
   const handleShowTracesForVisibleConstraints = useCallback(() => {
     const visibleConstraints = filteredAndSortedConstraints();
     const visibleConstraintIds = visibleConstraints.map(constraint => constraint.id);
@@ -738,6 +854,43 @@ const ConstraintsView: React.FC<{
           Show Traces for Visible Constraints ({filteredAndSortedConstraints().length})
         </button>
       </div>
+
+      {/* Group Summary (if groups exist) */}
+      {constraintGroups.length > 1 && (
+        <div className="group-summary-section">
+          <h3>Group Summary</h3>
+          <div className="group-summary-grid">
+            {constraintGroups.map(group => (
+              <div key={group.id} className="group-summary-card">
+                <div className="group-summary-header">
+                  <h4>{group.name}</h4>
+                  <span className={`group-severity-badge ${group.severity.toLowerCase()}`}>
+                    {group.severity}
+                  </span>
+                </div>
+                <div className="group-summary-stats">
+                  <div className="group-stat">
+                    <span className="stat-label">Constraints:</span>
+                    <span className="stat-value">{group.constraints.length}</span>
+                  </div>
+                  <div className="group-stat">
+                    <span className="stat-label">Violations:</span>
+                    <span className="stat-value">{group.totalViolations}</span>
+                  </div>
+                  <div className="group-stat">
+                    <span className="stat-label">Fulfilments:</span>
+                    <span className="stat-value">{group.totalFulfilments}</span>
+                  </div>
+                  <div className="group-stat">
+                    <span className="stat-label">Avg Rate:</span>
+                    <span className="stat-value">{(group.averageViolationRate * 100).toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="constraint-filters">
@@ -801,6 +954,22 @@ const ConstraintsView: React.FC<{
               Compliance
             </label>
           </div>
+        </div>
+
+        <div className="filter-group">
+          <label>Group:</label>
+          <select
+            value={constraintFilter.group}
+            onChange={(e) => setConstraintFilter({
+              ...constraintFilter,
+              group: e.target.value
+            })}
+          >
+            <option value="">All Groups</option>
+            {constraintGroups.map(group => (
+              <option key={group.id} value={group.name}>{group.name}</option>
+            ))}
+          </select>
         </div>
 
         <div className="filter-group">
@@ -908,6 +1077,11 @@ const ConstraintsView: React.FC<{
               <div className="constraint-activities">
                 <strong>Activities:</strong> {constraint.description}
               </div>
+              {constraint.tag?.group && (
+                <div className="constraint-group">
+                  <strong>Group:</strong> {constraint.tag.group}
+                </div>
+              )}
               <div className="constraint-stats">
                 <div className="stat">
                   <span className="stat-label">Violations:</span>
@@ -954,10 +1128,28 @@ const TracesView: React.FC<{
   processedConstraints: DashboardConstraint[];
   totalTraces: number;
 }> = ({ traces, traceFilter, setTraceFilter, traceSort, setTraceSort, onTraceClick, processedConstraints, totalTraces }) => {
+  const [traceIdSearch, setTraceIdSearch] = React.useState('');
+
+  // Filter traces by Trace ID search in addition to other filters
+  const filteredTraces = React.useMemo(() => {
+    if (!traceIdSearch) return traces;
+    return traces.filter(trace => trace.caseId.toLowerCase().includes(traceIdSearch.toLowerCase()));
+  }, [traces, traceIdSearch]);
+
   return (
     <div className="traces-view">
       {/* Filters */}
       <div className="trace-filters">
+        <div className="filter-group">
+          <label>Case ID:</label>
+          <input
+            type="text"
+            placeholder="Search Case ID..."
+            value={traceIdSearch}
+            onChange={e => setTraceIdSearch(e.target.value)}
+            style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc', fontSize: '1rem', width: 140, height: 36, boxSizing: 'border-box' }}
+          />
+        </div>
         <div className="filter-group">
           <label>Min Fitness:</label>
           <input
@@ -1025,6 +1217,7 @@ const TracesView: React.FC<{
                 e.target.value = ''; // Reset selection
               }
             }}
+            style={{ width: 140, height: 36, borderRadius: 4, border: '1px solid #ccc', fontSize: '1rem', boxSizing: 'border-box' }}
           >
             <option value="">Select a constraint...</option>
             {processedConstraints
@@ -1097,7 +1290,7 @@ const TracesView: React.FC<{
 
       {/* Results count */}
       <div className="traces-results">
-        <p>Showing {traces.length} of {totalTraces} traces</p>
+        <p>Showing {filteredTraces.length} of {totalTraces} traces</p>
       </div>
 
       {/* Traces Table */}
@@ -1115,7 +1308,7 @@ const TracesView: React.FC<{
             </tr>
           </thead>
           <tbody>
-            {traces.map(trace => (
+            {filteredTraces.map(trace => (
               <tr key={trace.caseId}>
                 <td>{trace.caseId}</td>
                 <td className={`fitness-cell ${trace.fitness < 0.5 ? 'low' : trace.fitness < 0.8 ? 'medium' : 'high'}`}>
