@@ -64,7 +64,7 @@ function mapConstraintIdFromCsv(csvId: string): string {
 export function buildConstraintLevelDetail(traceConstraintMap: Map<string, Map<string, string[]>>) {
   // Map<constraintId, Map<traceId, string[]>>
   const constraintTraceMap = new Map();
-  // Map<constraintId, { fulfilment: n, violation: m, vacFulfilment: x, vacViolation: y, traces: Set<traceId>, violatingTraces: Set<traceId> }>
+  // Map<constraintId, { fulfilment: n, violation: m, traces: Set<traceId>, violatingTraces: Set<traceId> }>
   const constraintStatsMap = new Map();
 
   for (const [traceId, constraintMap] of Array.from(traceConstraintMap.entries())) {
@@ -80,8 +80,6 @@ export function buildConstraintLevelDetail(traceConstraintMap: Map<string, Map<s
         constraintStatsMap.set(constraintId, {
           fulfilment: 0,
           violation: 0,
-          vacFulfilment: 0,
-          vacViolation: 0,
           traces: new Set(),
           violatingTraces: new Set()
         });
@@ -89,14 +87,11 @@ export function buildConstraintLevelDetail(traceConstraintMap: Map<string, Map<s
       const stats = constraintStatsMap.get(constraintId);
       let hasViolation = false;
       for (const type of resultTypes) {
-        if (type === 'fulfillment') stats.fulfilment++;
-        else if (type === 'violation') {
-          stats.violation++;
-          hasViolation = true;
+        if (type === 'fulfillment' || type === 'vac. fulfillment') {
+          stats.fulfilment++;
         }
-        else if (type === 'vac. fulfillment') stats.vacFulfilment++;
-        else if (type === 'vac. violation') {
-          stats.vacViolation++;
+        else if (type === 'violation' || type === 'vac. violation') {
+          stats.violation++;
           hasViolation = true;
         }
       }
@@ -163,17 +158,18 @@ export class DataProcessor {
         const vacuousFulfilments = parseInt(values[4]) || 0;
         const vacuousViolations = parseInt(values[5]) || 0;
         
-        const violationRate = activations > 0 ? (violations + vacuousViolations) / activations : 0;
+        // Aggregate vacuous fulfilments and violations into total fulfilments and violations
+        const totalFulfilments = fulfilments + vacuousFulfilments;
+        const totalViolations = violations + vacuousViolations;
+        const violationRate = activations > 0 ? totalViolations / activations : 0;
         const severity = getConstraintSeverity(violationRate);
         
         
         stats.push({
           constraintId,
           activations,
-          fulfilments,
-          violations,
-          vacuousFulfilments,
-          vacuousViolations,
+          fulfilments: totalFulfilments,
+          violations: totalViolations,
           violationRate,
           severity
         });
@@ -559,8 +555,10 @@ export class DataProcessor {
       const taggedConstraint = taggedConstraints?.find(tc => tc.id === constraint.id);
       
       if (newStats) {
-        const totalActivations = newStats.fulfilment + newStats.violation + newStats.vacFulfilment + newStats.vacViolation;
-        const violationRate = totalActivations > 0 ? (newStats.violation + newStats.vacViolation) / totalActivations : 0;
+        const totalActivations = newStats.fulfilment + newStats.violation;
+        const totalFulfilments = newStats.fulfilment;
+        const totalViolations = newStats.violation;
+        const violationRate = totalActivations > 0 ? totalViolations / totalActivations : 0;
         const severity = getConstraintSeverity(violationRate);
         
         return {
@@ -568,15 +566,13 @@ export class DataProcessor {
           statistics: {
             constraintId: constraint.id,
             activations: totalActivations,
-            fulfilments: newStats.fulfilment,
-            violations: newStats.violation,
-            vacuousFulfilments: newStats.vacFulfilment,
-            vacuousViolations: newStats.vacViolation,
+            fulfilments: totalFulfilments,
+            violations: totalViolations,
             violationRate: violationRate,
             severity: severity
           },
-          violationCount: newStats.violation + newStats.vacViolation,
-          fulfilmentCount: newStats.fulfilment + newStats.vacFulfilment,
+          violationCount: totalViolations,
+          fulfilmentCount: totalFulfilments,
           violationRate: violationRate,
           severity: severity,
           tag: taggedConstraint?.tag || {
@@ -595,8 +591,6 @@ export class DataProcessor {
             activations: 0,
             fulfilments: 0,
             violations: 0,
-            vacuousFulfilments: 0,
-            vacuousViolations: 0,
             violationRate: 0,
             severity: 'LOW' as const
           },
@@ -626,8 +620,6 @@ export class DataProcessor {
       let activations = 0;
       let fulfilments = 0;
       let violations = 0;
-      let vacuousFulfilments = 0;
-      let vacuousViolations = 0;
       const violatedConstraints: string[] = [];
       const fulfilledConstraints: string[] = [];
       const constraintDetails: TraceConstraintDetail[] = [];
@@ -636,28 +628,24 @@ export class DataProcessor {
         let constraintActivations = 0;
         let constraintFulfilments = 0;
         let constraintViolations = 0;
-        let constraintVacuousFulfilments = 0;
-        let constraintVacuousViolations = 0;
         
         resultTypes.forEach((resultType: string) => {
           switch (resultType) {
             case 'fulfillment':
+            case 'vac. fulfillment':
               fulfilments += 1;
               constraintFulfilments += 1;
-              fulfilledConstraints.push(mapConstraintIdFromCsv(constraintId));
+              if (resultType === 'fulfillment') {
+                fulfilledConstraints.push(mapConstraintIdFromCsv(constraintId));
+              }
               break;
             case 'violation':
+            case 'vac. violation':
               violations += 1;
               constraintViolations += 1;
-              violatedConstraints.push(mapConstraintIdFromCsv(constraintId));
-              break;
-            case 'vac. fulfillment':
-              vacuousFulfilments += 1;
-              constraintVacuousFulfilments += 1;
-              break;
-            case 'vac. violation':
-              vacuousViolations += 1;
-              constraintVacuousViolations += 1;
+              if (resultType === 'violation') {
+                violatedConstraints.push(mapConstraintIdFromCsv(constraintId));
+              }
               break;
           }
           activations += 1;
@@ -670,9 +658,7 @@ export class DataProcessor {
           resultTypes,
           totalActivations: constraintActivations,
           totalFulfilments: constraintFulfilments,
-          totalViolations: constraintViolations,
-          totalVacuousFulfilments: constraintVacuousFulfilments,
-          totalVacuousViolations: constraintVacuousViolations
+          totalViolations: constraintViolations
         });
       });
       
@@ -684,8 +670,6 @@ export class DataProcessor {
         activations,
         fulfilments,
         violations,
-        vacuousFulfilments,
-        vacuousViolations,
         violatedConstraints: Array.from(new Set(violatedConstraints)),
         fulfilledConstraints: Array.from(new Set(fulfilledConstraints)),
         events,
@@ -698,13 +682,23 @@ export class DataProcessor {
     const totalTraces = dashboardTraces.length;
     const totalConstraints = dashboardConstraints.length;
     
+    // Calculate total variants (unique activity sequences)
+    const activitySequences = new Set<string>();
+    dashboardTraces.forEach(trace => {
+      if (trace.events && trace.events.length > 0) {
+        const sequence = trace.events.map(e => e.activity).join(' → ');
+        activitySequences.add(sequence);
+      }
+    });
+    const totalVariants = activitySequences.size;
+    
     const overview: DashboardOverview = {
       totalTraces,
+      totalVariants,
       totalConstraints,
       overallFitness: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => sum + t.fitness, 0) / totalTraces : 0,
       overallConformance: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => {
-        const totalViolations = t.violations + t.vacuousViolations;
-        return sum + (totalViolations === 0 ? 1 : 0);
+        return sum + (t.violations === 0 ? 1 : 0);
       }, 0) / totalTraces : 0,
       overallCompliance: totalTraces > 0 ? dashboardTraces.reduce((sum, t) => {
         // Get compliance-tagged constraints that this trace violates

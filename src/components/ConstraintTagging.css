@@ -527,6 +527,188 @@
 /* Group filter and control styles */
 /* .group-select styling is now included in the shared filter input styles above */
 
+/* Group Dialog Styles */
+.group-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.group-dialog {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.group-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e1e5e9;
+  background: #f8f9fa;
+}
+
+.group-dialog-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.close-dialog-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-dialog-button:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.group-dialog-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.group-creator {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.group-creator h4 {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.group-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.group-name-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.group-name-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.add-group-button {
+  padding: 10px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-group-button:hover:not(:disabled) {
+  background: #5a6fd8;
+}
+
+.add-group-button:disabled {
+  background: #b8c2cc;
+  cursor: not-allowed;
+}
+
+.groups-list h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.no-groups {
+  color: #6c757d;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin: 0;
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.group-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.group-item:hover {
+  background: #e9ecef;
+  border-color: #ced4da;
+}
+
+.group-name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.remove-group-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.remove-group-button:hover {
+  background: #c82333;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .constraint-tagging {
@@ -579,6 +761,32 @@
   
   .group-creator {
     flex-direction: column;
+  }
+  
+  .groups-grid {
+    grid-template-columns: 1fr;
+  }
+} 
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .group-dialog {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .group-dialog-header,
+  .group-dialog-content {
+    padding: 16px;
+  }
+  
+  .group-input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .add-group-button {
+    width: 100%;
   }
   
   .groups-grid {

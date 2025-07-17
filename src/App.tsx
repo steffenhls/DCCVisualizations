@@ -46,10 +46,8 @@ const App: React.FC = () => {
               activations: 0,
               fulfilments: 0,
               violations: 0,
-              vacuousFulfilments: 0,
-              vacuousViolations: 0,
               violationRate: 0,
-              severity: 'LOW' as const
+              severity: 'MEDIUM' as const
             },
             violationCount: 0,
             fulfilmentCount: 0,

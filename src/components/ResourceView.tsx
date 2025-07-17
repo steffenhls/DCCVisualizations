@@ -45,7 +45,7 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
     if (trace.constraintDetails) {
       trace.constraintDetails.forEach(detail => {
         // Find violations in this constraint
-        const violationCount = detail.totalViolations + detail.totalVacuousViolations;
+        const violationCount = detail.totalViolations;
         
         if (violationCount > 0) {
           const constraint = constraintMap.get(detail.constraintId);
@@ -69,21 +69,6 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
                 constraintId: detail.constraintId,
                 constraintType: constraint.type,
                 violationType: 'violation',
-                timestamp: event.timestamp,
-                relativeTimeMinutes,
-                resource: event.resource,
-                activity: event.activity,
-                eventIndex: sortedEvents.findIndex(e => e.id === event.id),
-                severity: constraint.severity
-              });
-            }
-            
-            if (detail.totalVacuousViolations > 0) {
-              violationData.push({
-                traceId: trace.caseId,
-                constraintId: detail.constraintId,
-                constraintType: constraint.type,
-                violationType: 'vac. violation',
                 timestamp: event.timestamp,
                 relativeTimeMinutes,
                 resource: event.resource,
@@ -128,32 +113,61 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
   }, [violationData]);
 
   // Resource violation analysis
-  const resourceViolationData = useMemo(() => {
-    const resourceMap = new Map<string, { violations: number; traces: Set<string>; activities: Set<string> }>();
-    
+  const resourceViolations = useMemo(() => {
+    const resourceViolations = new Map<string, {
+      resource: string;
+      violations: number;
+      uniqueTraces: Set<string>;
+      uniqueActivities: Set<string>;
+    }>();
+
+    // Use violation data to build resource statistics
     violationData.forEach(violation => {
-      if (violation.resource) {
-        if (!resourceMap.has(violation.resource)) {
-          resourceMap.set(violation.resource, { violations: 0, traces: new Set(), activities: new Set() });
-        }
-        const resourceData = resourceMap.get(violation.resource)!;
-        resourceData.violations++;
-        resourceData.traces.add(violation.traceId);
-        resourceData.activities.add(violation.activity);
+      const resource = violation.resource || 'Unassigned';
+      
+      if (!resourceViolations.has(resource)) {
+        resourceViolations.set(resource, {
+          resource,
+          violations: 0,
+          uniqueTraces: new Set(),
+          uniqueActivities: new Set()
+        });
       }
+      
+      const resourceStats = resourceViolations.get(resource)!;
+      resourceStats.violations += 1; // Each violation entry represents one violation
+      resourceStats.uniqueTraces.add(violation.traceId);
+      resourceStats.uniqueActivities.add(violation.activity);
     });
     
-    return Array.from(resourceMap.entries()).map(([resource, data]) => ({
-      resource,
-      violations: data.violations,
-      uniqueTraces: data.traces.size,
-      uniqueActivities: data.activities.size,
-      activities: Array.from(data.activities)
-    })).sort((a, b) => b.violations - a.violations);
+    // Convert to array and sort by violations
+    return Array.from(resourceViolations.values())
+      .map(stats => ({
+        resource: stats.resource,
+        violations: stats.violations,
+        uniqueTraces: stats.uniqueTraces.size,
+        uniqueActivities: stats.uniqueActivities.size
+      }))
+      .sort((a, b) => b.violations - a.violations);
   }, [violationData]);
 
+  // Calculate summary statistics
+  const summaryStats = useMemo(() => {
+    const totalResources = resourceViolations.length;
+    const totalViolations = resourceViolations.reduce((sum, r) => sum + r.violations, 0);
+    const totalTraces = traces.length;
+    const tracesWithViolations = traces.filter(trace => trace.violations > 0).length;
+    
+    return {
+      totalResources,
+      totalViolations,
+      totalTraces,
+      tracesWithViolations
+    };
+  }, [resourceViolations, traces]);
+
   return (
-    <div style={{ padding: '2rem' }}>
+    <div>
       <div style={{ marginBottom: '2rem' }}>
         <h3 style={{ marginBottom: 4 }}>Resource Data Summary</h3>
         <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: 12 }}>
@@ -163,19 +177,19 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div style={{ background: 'white', padding: '1rem', borderRadius: '6px', textAlign: 'center' }}>
               <h4>Resources</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#e74c3c' }}>{resourceViolationData.length}</p>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#e74c3c' }}>{resourceViolations.length}</p>
             </div>
             <div style={{ background: 'white', padding: '1rem', borderRadius: '6px', textAlign: 'center' }}>
               <h4>Total Violations</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3498db' }}>{resourceViolationData.reduce((sum, r) => sum + r.violations, 0)}</p>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3498db' }}>{resourceViolations.reduce((sum, r) => sum + r.violations, 0)}</p>
             </div>
             <div style={{ background: 'white', padding: '1rem', borderRadius: '6px', textAlign: 'center' }}>
               <h4>Activities Involved</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12' }}>{new Set(resourceViolationData.flatMap(r => r.activities)).size}</p>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12' }}>{new Set(resourceViolations.flatMap(r => r.uniqueActivities)).size}</p>
             </div>
             <div style={{ background: 'white', padding: '1rem', borderRadius: '6px', textAlign: 'center' }}>
               <h4>Traces Affected</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#27ae60' }}>{traces.filter(trace => trace.violations > 0 || trace.vacuousViolations > 0).length}</p>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#27ae60' }}>{traces.filter(trace => trace.violations > 0).length}</p>
             </div>
           </div>
         </div>
@@ -186,13 +200,13 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
           Violations, unique traces, and activities per resource.
         </div>
         <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
-          {resourceViolationData.length === 0 ? (
+          {resourceViolations.length === 0 ? (
             <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
               No resource violation data available.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={resourceViolationData} margin={{ top: 20, right: 30, left: 10, bottom: 60 }}>
+              <BarChart data={resourceViolations} margin={{ top: 20, right: 30, left: 10, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="resource" angle={-45} textAnchor="end">
                   <Label value="Resource" offset={20} position="bottom" />

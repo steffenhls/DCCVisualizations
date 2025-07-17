@@ -114,7 +114,8 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
               'border-color': '#2c3e50',
               'border-width': 2,
               'text-wrap': 'wrap',
-              'text-max-width': 'data(width)'
+              'text-max-width': 'data(width)',
+              'shape': 'roundrectangle'
             }
           },
           {

@@ -13,8 +13,6 @@ export interface ConstraintStatistics {
   activations: number;
   fulfilments: number;
   violations: number;
-  vacuousFulfilments: number;
-  vacuousViolations: number;
   violationRate: number;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 }
@@ -36,8 +34,6 @@ export interface TraceData {
   activations: number;
   fulfilments: number;
   violations: number;
-  vacuousFulfilments: number;
-  vacuousViolations: number;
   violatedConstraints: string[];
   fulfilledConstraints: string[];
   events: ProcessEvent[];
@@ -98,8 +94,6 @@ export interface TraceConstraintDetail {
   totalActivations: number;
   totalFulfilments: number;
   totalViolations: number;
-  totalVacuousFulfilments: number;
-  totalVacuousViolations: number;
 }
 
 // Dashboard trace with comprehensive statistics
@@ -111,8 +105,6 @@ export interface DashboardTrace {
   activations: number;
   fulfilments: number;
   violations: number;
-  vacuousFulfilments: number;
-  vacuousViolations: number;
   violatedConstraints: string[];
   fulfilledConstraints: string[];
   events: ProcessEvent[];
@@ -123,6 +115,7 @@ export interface DashboardTrace {
 // Dashboard overview KPIs
 export interface DashboardOverview {
   totalTraces: number;
+  totalVariants: number;
   totalConstraints: number;
   overallFitness: number;
   overallConformance: number;
@@ -192,6 +185,7 @@ export interface TraceFilter {
   hasInsertions?: boolean;
   hasDeletions?: boolean;
   constraintTypes?: string[];
+  sequence?: string;
 }
 
 export interface TraceSort {
@@ -239,7 +233,7 @@ export interface ConstraintViolation {
   constraintId: string;
   constraintType: string;
   activities: string[];
-  violationType: 'ACTIVATION' | 'FULFILMENT' | 'VACUOUS';
+  violationType: 'ACTIVATION' | 'FULFILMENT';
   timestamp: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   description: string;
@@ -249,7 +243,7 @@ export interface ConstraintFulfilment {
   constraintId: string;
   constraintType: string;
   activities: string[];
-  fulfilmentType: 'NORMAL' | 'VACUOUS';
+  fulfilmentType: 'NORMAL';
   timestamp: string;
   description: string;
 }

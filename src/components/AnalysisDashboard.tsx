@@ -11,6 +11,7 @@ import { DataProcessor } from '../utils/dataProcessor';
 import CytoscapeModel from './CytoscapeModel';
 import ResourceView from './ResourceView';
 import TimeView from './TimeView';
+import ProcessModelView from './ProcessModelView';
 import './AnalysisDashboard.css';
 
 interface AnalysisDashboardProps {
@@ -30,7 +31,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [processedConstraints, setProcessedConstraints] = useState<DashboardConstraint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'overview' | 'constraints' | 'traces' | 'resource' | 'time'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'constraints' | 'traces' | 'variants' | 'resource' | 'time' | 'model'>('overview');
   const [selectedTrace, setSelectedTrace] = useState<DashboardTrace | null>(null);
   const [traceFilter, setTraceFilter] = useState<TraceFilter>({});
   const [traceSort, setTraceSort] = useState<TraceSort>({ field: 'caseId', direction: 'asc' });
@@ -196,6 +197,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       if (traceFilter.hasFulfilments && trace.fulfilments === 0) return false;
       if (traceFilter.hasInsertions && trace.insertions === 0) return false;
       if (traceFilter.hasDeletions && trace.deletions === 0) return false;
+      if (traceFilter.sequence) {
+        // Filter by activity sequence
+        const traceSequence = trace.events.map(e => e.activity).join(' → ');
+        if (traceSequence !== traceFilter.sequence) {
+          return false;
+        }
+      }
       if (traceFilter.constraintTypes && traceFilter.constraintTypes.length > 0) {
         // Check if constraintTypes contains constraint IDs (for direct constraint filtering)
         const constraintIds = traceFilter.constraintTypes.filter(id => 
@@ -333,6 +341,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     setActiveView('traces');
   }, [traceFilter]);
 
+  const handleNavigateToTracesWithSequenceFilter = useCallback((sequence: string) => {
+    // Navigate to traces view with sequence filtering
+    setTraceFilter({
+      ...traceFilter,
+      sequence: sequence
+    });
+    setActiveView('traces');
+  }, [traceFilter]);
+
+  const handleNavigateToVariants = useCallback(() => {  
+    // Navigate to variants view
+    setActiveView('variants');
+  }, []);
+
   if (loading) {
     return (
       <div className="analysis-dashboard">
@@ -378,6 +400,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             Overview
           </button>
           <button
+            className={`tab ${activeView === 'model' ? 'active' : ''}`}
+            onClick={() => setActiveView('model')}
+          >
+            Model
+          </button>
+          <button
             className={`tab ${activeView === 'constraints' ? 'active' : ''}`}
             onClick={() => setActiveView('constraints')}
           >
@@ -388,6 +416,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             onClick={() => setActiveView('traces')}
           >
             Traces
+          </button>
+          <button
+            className={`tab ${activeView === 'variants' ? 'active' : ''}`}
+            onClick={() => setActiveView('variants')}
+          >
+            Variants
           </button>
           <button
             className={`tab ${activeView === 'resource' ? 'active' : ''}`}
@@ -418,6 +452,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               onNavigateToConstraintsWithEfficiency={handleNavigateToConstraintsWithEfficiency}
               onNavigateToConstraintsWithCriticalPriority={handleNavigateToConstraintsWithCriticalPriority}
               onNavigateToConstraintsWithHighPriority={handleNavigateToConstraintsWithHighPriority}
+              onNavigateToVariants={handleNavigateToVariants}
             />
           )}
 
@@ -445,6 +480,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             />
           )}
 
+          {activeView === 'variants' && (
+            <VariantsView
+              traces={traces}
+              processedConstraints={processedConstraints}
+              setSelectedTrace={setSelectedTrace}
+              setShowTraceDetail={setShowTraceDetail}
+              onNavigateToTracesWithSequenceFilter={handleNavigateToTracesWithSequenceFilter}
+            />
+          )}
+
           {activeView === 'resource' && (
             <ResourceView 
               traces={traces}
@@ -456,6 +501,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             <TimeView 
               traces={traces}
               constraints={processedConstraints}
+            />
+          )}
+
+          {activeView === 'model' && (
+            <ProcessModelView 
+              modelVisualization={modelVisualization}
+              traces={traces}
+              onConstraintClick={handleConstraintClick}
             />
           )}
         </div>
@@ -485,11 +538,13 @@ const OverviewView: React.FC<{
   onNavigateToConstraintsWithEfficiency?: () => void;
   onNavigateToConstraintsWithCriticalPriority?: () => void;
   onNavigateToConstraintsWithHighPriority?: () => void;
-}> = ({ overview, modelVisualization, onConstraintClick, onNavigateToTraces, onNavigateToConstraints, onNavigateToTracesWithFitnessSort, onNavigateToConstraintsWithCompliance, onNavigateToConstraintsWithQuality, onNavigateToConstraintsWithEfficiency, onNavigateToConstraintsWithCriticalPriority, onNavigateToConstraintsWithHighPriority }) => {
+  onNavigateToVariants?: () => void;
+}> = ({ overview, modelVisualization, onConstraintClick, onNavigateToTraces, onNavigateToConstraints, onNavigateToTracesWithFitnessSort, onNavigateToConstraintsWithCompliance, onNavigateToConstraintsWithQuality, onNavigateToConstraintsWithEfficiency, onNavigateToConstraintsWithCriticalPriority, onNavigateToConstraintsWithHighPriority, onNavigateToVariants }) => {
   
   // Animated counter states
   const [animatedValues, setAnimatedValues] = useState({
     totalTraces: 0,
+    totalVariants: 0,
     totalConstraints: 0,
     overallFitness: 0,
     overallConformance: 0,
@@ -523,6 +578,7 @@ const OverviewView: React.FC<{
 
     // Start animations
     animateValue(0, overview.totalTraces, (value) => setAnimatedValues(prev => ({ ...prev, totalTraces: Math.floor(value) })));
+    animateValue(0, overview.totalVariants, (value) => setAnimatedValues(prev => ({ ...prev, totalVariants: Math.floor(value) })));
     animateValue(0, overview.totalConstraints, (value) => setAnimatedValues(prev => ({ ...prev, totalConstraints: Math.floor(value) })));
     animateValue(0, overview.overallFitness, (value) => setAnimatedValues(prev => ({ ...prev, overallFitness: value })));
     animateValue(0, overview.overallConformance, (value) => setAnimatedValues(prev => ({ ...prev, overallConformance: value })));
@@ -655,6 +711,16 @@ const OverviewView: React.FC<{
         </div>
         <div 
           className="kpi-card clickable" 
+          style={{ cursor: onNavigateToTraces ? 'pointer' : 'default' }}
+          onMouseEnter={(e) => handleMouseEnter(e, "Total number of unique activity sequences (variants) in the process. Click to view all traces.")}
+          onMouseLeave={handleMouseLeave}
+          onClick={() => handleClick(onNavigateToVariants)}
+        >
+          <h3>Total Variants</h3>
+          <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.totalVariants}</div>
+        </div>
+        <div 
+          className="kpi-card clickable" 
           style={{ cursor: onNavigateToConstraints ? 'pointer' : 'default' }}
           onMouseEnter={(e) => handleMouseEnter(e, "Total number of DECLARE constraints in the process model. Click to view all constraints.")}
           onMouseLeave={handleMouseLeave}
@@ -742,17 +808,6 @@ const OverviewView: React.FC<{
           <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.highPriorityViolations}</div>
         </div>
       </div>
-
-      {/* Model Visualization */}
-      {modelVisualization && (
-        <div className="model-visualization">
-          <h3>Process Model</h3>
-          <CytoscapeModel 
-            modelVisualization={modelVisualization} 
-            onConstraintClick={onConstraintClick}
-          />
-        </div>
-      )}
     </div>
   );
 };
@@ -959,16 +1014,6 @@ const ConstraintsView: React.FC<{
 
   return (
     <div className="constraints-view">
-      {/* Action Button */}
-      <div className="constraints-action-bar">
-        <button 
-          className="show-traces-button"
-          onClick={handleShowTracesForVisibleConstraints}
-        >
-          Show Traces for Visible Constraints ({filteredAndSortedConstraints().length})
-        </button>
-      </div>
-
       {/* Group Summary (if groups exist) */}
       {constraintGroups.length > 1 && (
         <div className="group-summary-section">
@@ -1130,6 +1175,27 @@ const ConstraintsView: React.FC<{
             />
             Has Violations
           </label>
+        </div>
+
+        {/* Show Traces for Visible Constraints Button */}
+        <div className="filter-group">
+          <button 
+            className="show-traces-button"
+            onClick={handleShowTracesForVisibleConstraints}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#667eea',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              marginTop: '8px'
+            }}
+          >
+            Show Traces for Visible Constraints ({filteredAndSortedConstraints().length})
+          </button>
         </div>
       </div>
 
@@ -1383,6 +1449,29 @@ const TracesView: React.FC<{
         </div>
       )}
 
+      {/* Sequence Filter */}
+      {traceFilter.sequence && (
+        <div className="constraint-filter-section">
+          <h4>Filtered by Sequence:</h4>
+          <div className="constraint-filter-tags">
+            <div className="constraint-filter-tag">
+              <span className="constraint-name">
+                {traceFilter.sequence.length > 50 ? traceFilter.sequence.substring(0, 50) + '...' : traceFilter.sequence}
+              </span>
+              <button
+                className="remove-constraint-filter"
+                onClick={() => setTraceFilter({
+                  ...traceFilter,
+                  sequence: undefined
+                })}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sort */}
       <div className="trace-sort">
         <label>Sort by:</label>
@@ -1412,9 +1501,18 @@ const TracesView: React.FC<{
         <table>
           <thead>
             <tr>
-              <th>Case ID</th>
-              <th>Fitness</th>
-              <th>Violations</th>
+              <th className="sortable" onClick={() => setTraceSort({ field: 'caseId', direction: traceSort.field === 'caseId' && traceSort.direction === 'asc' ? 'desc' : 'asc' })}>
+                <span className="sort-indicator">{traceSort.field === 'caseId' ? (traceSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Case ID
+              </th>
+              <th className="sortable" onClick={() => setTraceSort({ field: 'fitness', direction: traceSort.field === 'fitness' && traceSort.direction === 'asc' ? 'desc' : 'asc' })}>
+                <span className="sort-indicator">{traceSort.field === 'fitness' ? (traceSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Fitness
+              </th>
+              <th className="sortable" onClick={() => setTraceSort({ field: 'violations', direction: traceSort.field === 'violations' && traceSort.direction === 'asc' ? 'desc' : 'asc' })}>
+                <span className="sort-indicator">{traceSort.field === 'violations' ? (traceSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Violations
+              </th>
               <th>Fulfilments</th>
               <th>Insertions</th>
               <th>Deletions</th>
@@ -1440,6 +1538,434 @@ const TracesView: React.FC<{
                     onClick={() => onTraceClick(trace)}
                   >
                     View Details
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// Variants View Component
+const VariantsView: React.FC<{
+  traces: DashboardTrace[];
+  processedConstraints: DashboardConstraint[];
+  setSelectedTrace: React.Dispatch<React.SetStateAction<DashboardTrace | null>>;
+  setShowTraceDetail: React.Dispatch<React.SetStateAction<boolean>>;
+  onNavigateToTracesWithSequenceFilter: (sequence: string) => void;
+}> = ({ traces, processedConstraints, setSelectedTrace, setShowTraceDetail, onNavigateToTracesWithSequenceFilter }) => {
+  const [variantFilter, setVariantFilter] = useState({
+    minLength: '',
+    maxLength: '',
+    hasViolations: false,
+    hasFulfilments: false,
+    hasInsertions: false,
+    hasDeletions: false,
+    constraintTypes: [] as string[]
+  });
+  type VariantSortField = 'sequence' | 'count' | 'length' | 'fitness' | 'violations' | 'fulfilments' | 'alignmentCosts';
+  const [variantSort, setVariantSort] = useState<{ field: VariantSortField; direction: 'asc' | 'desc' }>({
+    field: 'length',
+    direction: 'desc'
+  });
+  const [expandedSequences, setExpandedSequences] = useState<Set<string>>(new Set());
+
+  const toggleSequenceExpansion = (sequence: string) => {
+    const newExpanded = new Set(expandedSequences);
+    if (newExpanded.has(sequence)) {
+      newExpanded.delete(sequence);
+    } else {
+      newExpanded.add(sequence);
+    }
+    setExpandedSequences(newExpanded);
+  };
+
+  // Group traces by activity sequence
+  const activitySequences = useMemo(() => {
+    const sequences = new Map<string, {
+      sequence: string;
+      traces: DashboardTrace[];
+      totalViolations: number;
+      totalFulfilments: number;
+      totalInsertions: number;
+      totalDeletions: number;
+      averageFitness: number;
+    }>();
+
+    traces.forEach(trace => {
+      const activitySequence = trace.events.map(e => e.activity).join(' → ');
+      
+      if (!sequences.has(activitySequence)) {
+        sequences.set(activitySequence, {
+          sequence: activitySequence,
+          traces: [],
+          totalViolations: 0,
+          totalFulfilments: 0,
+          totalInsertions: 0,
+          totalDeletions: 0,
+          averageFitness: 0
+        });
+      }
+      
+      const sequence = sequences.get(activitySequence)!;
+      sequence.traces.push(trace);
+      sequence.totalViolations += trace.violations;
+      sequence.totalFulfilments += trace.fulfilments;
+      sequence.totalInsertions += trace.insertions;
+      sequence.totalDeletions += trace.deletions;
+      sequence.averageFitness += trace.fitness;
+    });
+
+    // Calculate average statistics for each sequence
+    sequences.forEach(sequence => {
+      if (sequence.traces.length > 0) {
+        sequence.averageFitness /= sequence.traces.length;
+      }
+    });
+
+    return Array.from(sequences.values()).sort((a, b) => {
+      let aValue: any, bValue: any;
+      switch (variantSort.field) {
+        case 'length':
+          aValue = a.sequence.split(' → ').length;
+          bValue = b.sequence.split(' → ').length;
+          break;
+        case 'fitness':
+          aValue = a.averageFitness;
+          bValue = b.averageFitness;
+          break;
+        case 'violations':
+          aValue = a.totalViolations;
+          bValue = b.totalViolations;
+          break;
+        case 'fulfilments':
+          aValue = a.totalFulfilments;
+          bValue = b.totalFulfilments;
+          break;
+        case 'alignmentCosts':
+          aValue = a.totalInsertions + a.totalDeletions;
+          bValue = b.totalInsertions + b.totalDeletions;
+          break;
+        default:
+          aValue = a.sequence;
+          bValue = b.sequence;
+      }
+
+      if (variantSort.direction === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+  }, [traces, variantSort]);
+
+  // Filter and sort variants
+  const filteredAndSortedVariants = useCallback(() => {
+    let filtered = activitySequences.filter(variant => {
+      const sequenceLength = variant.sequence.split(' → ').length;
+      
+      if (variantFilter.minLength && sequenceLength < parseInt(variantFilter.minLength)) return false;
+      if (variantFilter.maxLength && sequenceLength > parseInt(variantFilter.maxLength)) return false;
+      if (variantFilter.hasViolations && (variant.totalViolations / variant.traces.length) === 0) return false;
+      if (variantFilter.hasFulfilments && (variant.totalFulfilments / variant.traces.length) === 0) return false;
+      if (variantFilter.hasInsertions && ((variant.totalInsertions + variant.totalDeletions) / variant.traces.length) === 0) return false;
+      if (variantFilter.constraintTypes.length > 0) {
+        // Check if any trace in this variant has the specified constraint violations
+        const hasMatchingConstraint = variant.traces.some(trace => {
+          const constraintIds = variantFilter.constraintTypes.filter(id => 
+            processedConstraints.some(c => c.id === id)
+          );
+          
+          if (constraintIds.length > 0) {
+            // Filter by specific constraint IDs
+            return constraintIds.some(id => trace.violatedConstraints.includes(id));
+          } else {
+            // Filter by constraint types
+            const traceConstraintTypes = [...trace.violatedConstraints, ...trace.fulfilledConstraints]
+              .map(id => processedConstraints.find(c => c.id === id)?.type)
+              .filter(Boolean);
+            return variantFilter.constraintTypes.some(type => traceConstraintTypes.includes(type));
+          }
+        });
+        
+        if (!hasMatchingConstraint) return false;
+      }
+      return true;
+    });
+
+    // Sort variants
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (variantSort.field) {
+        case 'sequence':
+          aValue = a.sequence;
+          bValue = b.sequence;
+          break;
+        case 'count':
+          aValue = a.traces.length;
+          bValue = b.traces.length;
+          break;
+        case 'length':
+          aValue = a.sequence.split(' → ').length;
+          bValue = b.sequence.split(' → ').length;
+          break;
+        case 'fitness':
+          aValue = a.averageFitness;
+          bValue = b.averageFitness;
+          break;
+        case 'violations':
+          aValue = a.totalViolations / a.traces.length;
+          bValue = b.totalViolations / b.traces.length;
+          break;
+        case 'fulfilments':
+          aValue = a.totalFulfilments / a.traces.length;
+          bValue = b.totalFulfilments / b.traces.length;
+          break;
+        case 'alignmentCosts':
+          aValue = (a.totalInsertions + a.totalDeletions) / a.traces.length;
+          bValue = (b.totalInsertions + b.totalDeletions) / b.traces.length;
+          break;
+        default:
+          aValue = a.sequence;
+          bValue = b.sequence;
+      }
+
+      if (variantSort.direction === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    return filtered;
+  }, [activitySequences, variantFilter, variantSort, processedConstraints]);
+
+  const handleShowTracesForVisibleConstraints = useCallback((visibleConstraintIds: string[]) => {
+    setVariantFilter(prev => ({
+      ...prev,
+      constraintTypes: visibleConstraintIds
+    }));
+  }, []);
+
+  // Add 'count' and 'sequence' to sort logic
+  const handleSort = (field: VariantSortField) => {
+    setVariantSort(prev => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      } else {
+        return { field, direction: 'desc' };
+      }
+    });
+  };
+
+  return (
+    <div className="variants-view">
+      {/* Filters */}
+      <div className="variant-filters">
+        <div className="filter-group">
+          <label>Min Length:</label>
+          <input
+            type="number"
+            min="0"
+            value={variantFilter.minLength}
+            onChange={(e) => setVariantFilter({
+              ...variantFilter,
+              minLength: e.target.value
+            })}
+            placeholder="0"
+          />
+        </div>
+        <div className="filter-group">
+          <label>Max Length:</label>
+          <input
+            type="number"
+            min="0"
+            value={variantFilter.maxLength}
+            onChange={(e) => setVariantFilter({
+              ...variantFilter,
+              maxLength: e.target.value
+            })}
+            placeholder="100"
+          />
+        </div>
+        <div className="filter-group">
+          <label>Has:</label>
+          <select
+            value={variantFilter.hasViolations ? 'violations' : variantFilter.hasFulfilments ? 'fulfilments' : variantFilter.hasInsertions ? 'insertions' : variantFilter.hasDeletions ? 'deletions' : ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              setVariantFilter({
+                ...variantFilter,
+                hasViolations: value === 'violations',
+                hasFulfilments: value === 'fulfilments',
+                hasInsertions: value === 'insertions',
+                hasDeletions: value === 'deletions'
+              });
+            }}
+          >
+            <option value="">Any</option>
+            <option value="violations">Violations</option>
+            <option value="fulfilments">Fulfilments</option>
+            <option value="insertions">Alignment Costs</option>
+          </select>
+        </div>
+        <div className="filter-group">
+          <label>Add Constraint Filter:</label>
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                const newConstraintId = e.target.value;
+                const currentConstraints = variantFilter.constraintTypes;
+                if (!currentConstraints.includes(newConstraintId)) {
+                  setVariantFilter({
+                    ...variantFilter,
+                    constraintTypes: [...currentConstraints, newConstraintId]
+                  });
+                }
+                e.target.value = ''; // Reset selection
+              }
+            }}
+            style={{ width: 140, height: 36, borderRadius: 4, border: '1px solid #ccc', fontSize: '1rem', boxSizing: 'border-box' }}
+          >
+            <option value="">Select a constraint...</option>
+            {processedConstraints
+              .filter(constraint => !variantFilter.constraintTypes?.includes(constraint.id))
+              .map(constraint => (
+                <option key={constraint.id} value={constraint.id}>
+                  {constraint.id}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+      </div>
+
+      {/* Constraint Filter */}
+      {variantFilter.constraintTypes && variantFilter.constraintTypes.length > 0 && (
+        <div className="constraint-filter-section">
+          <h4>Filtered by Constraints:</h4>
+          <div className="constraint-filter-tags">
+            {variantFilter.constraintTypes.map(constraintId => {
+              const constraint = processedConstraints.find(c => c.id === constraintId);
+              return (
+                <div key={constraintId} className="constraint-filter-tag">
+                  <span className="constraint-name">
+                    {constraintId}
+                  </span>
+                  <button
+                    className="remove-constraint-filter"
+                    onClick={() => setVariantFilter({
+                      ...variantFilter,
+                      constraintTypes: variantFilter.constraintTypes?.filter(id => id !== constraintId) || []
+                    })}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              className="clear-all-constraints"
+              onClick={() => setVariantFilter({
+                ...variantFilter,
+                constraintTypes: []
+              })}
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Results count */}
+      <div className="variants-results">
+        <p>Showing {filteredAndSortedVariants().length} of {activitySequences.length} variants</p>
+      </div>
+
+      {/* Variants Table */}
+      <div className="variants-table">
+        <table>
+          <thead>
+            <tr>
+              <th className="sortable" onClick={() => handleSort('sequence')}>
+                <span className="sort-indicator">{variantSort.field === 'sequence' ? (variantSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Sequence
+              </th>
+              <th className="sortable" onClick={() => handleSort('count')}>
+                <span className="sort-indicator">{variantSort.field === 'count' ? (variantSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Count
+              </th>
+              <th className="sortable" onClick={() => handleSort('length')}>
+                <span className="sort-indicator">{variantSort.field === 'length' ? (variantSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Length
+              </th>
+              <th className="sortable" onClick={() => handleSort('fitness')}>
+                <span className="sort-indicator">{variantSort.field === 'fitness' ? (variantSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Fitness
+              </th>
+              <th className="sortable" onClick={() => handleSort('violations')}>
+                <span className="sort-indicator">{variantSort.field === 'violations' ? (variantSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Violations
+              </th>
+              <th className="sortable" onClick={() => handleSort('fulfilments')}>
+                <span className="sort-indicator">{variantSort.field === 'fulfilments' ? (variantSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Fulfilments
+              </th>
+              <th className="sortable" onClick={() => handleSort('alignmentCosts')}>
+                <span className="sort-indicator">{variantSort.field === 'alignmentCosts' ? (variantSort.direction === 'asc' ? '▲' : '▼') : ''}</span>
+                Alignment Costs
+              </th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAndSortedVariants().map(variant => (
+              <tr key={variant.sequence}>
+                <td className="sequence-cell">
+                  <div className="sequence-display">
+                    <button 
+                      className="sequence-toggle"
+                      onClick={() => toggleSequenceExpansion(variant.sequence)}
+                    >
+                      <span className={`chevron ${expandedSequences.has(variant.sequence) ? 'expanded' : ''}`}>
+                        ▶
+                      </span>
+                    </button>
+                    <div className="sequence-content">
+                      {expandedSequences.has(variant.sequence) ? (
+                        <code className="full-sequence">{variant.sequence}</code>
+                      ) : (
+                        <code className="truncated-sequence">
+                          {variant.sequence.length > 50 ? variant.sequence.substring(0, 50) + '...' : variant.sequence}
+                        </code>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="count-cell">{variant.traces.length}</td>
+                <td>{variant.sequence.split(' → ').length}</td>
+                <td className={`fitness-cell ${variant.averageFitness < 0.5 ? 'low' : variant.averageFitness < 0.8 ? 'medium' : 'high'}`}>
+                  {Math.round(variant.averageFitness * 100)}%
+                </td>
+                <td className={`violations-cell ${(variant.totalViolations / variant.traces.length) > 0 ? 'has-violations' : ''}`}>
+                  {Math.round(variant.totalViolations / variant.traces.length)}
+                </td>
+                <td>{Math.round(variant.totalFulfilments / variant.traces.length)}</td>
+                <td>{Math.round((variant.totalInsertions + variant.totalDeletions) / variant.traces.length)}</td>
+                <td>
+                  <button
+                    className="detail-button"
+                    onClick={() => {
+                      // Navigate to traces view with sequence filtering
+                      onNavigateToTracesWithSequenceFilter(variant.sequence);
+                    }}
+                  >
+                    View Traces ({variant.traces.length})
                   </button>
                 </td>
               </tr>
@@ -1556,11 +2082,11 @@ const TraceDetailModal: React.FC<{
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Violated:</span>
-                  <span className="stat-value violated">{trace.constraintDetails.filter(d => d.totalViolations > 0 || d.totalVacuousViolations > 0).length}</span>
+                  <span className="stat-value violated">{trace.constraintDetails.filter(d => d.totalViolations > 0).length}</span>
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">Fulfilled:</span>
-                  <span className="stat-value fulfilled">{trace.constraintDetails.filter(d => d.totalFulfilments > 0 || d.totalVacuousFulfilments > 0).length}</span>
+                  <span className="stat-value fulfilled">{trace.constraintDetails.filter(d => d.totalFulfilments > 0).length}</span>
                 </div>
                 <div className="summary-stat">
                   <span className="stat-label">No Activity:</span>
@@ -1575,15 +2101,13 @@ const TraceDetailModal: React.FC<{
                       <th>Activations</th>
                       <th>Fulfilments</th>
                       <th>Violations</th>
-                      <th>Vacuous Fulfilments</th>
-                      <th>Vacuous Violations</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {trace.constraintDetails.map((detail, index) => {
-                      const hasViolations = detail.totalViolations > 0 || detail.totalVacuousViolations > 0;
-                      const hasFulfilments = detail.totalFulfilments > 0 || detail.totalVacuousFulfilments > 0;
+                      const hasViolations = detail.totalViolations > 0;
+                      const hasFulfilments = detail.totalFulfilments > 0;
                       let status = 'No Activity';
                       if (hasViolations && hasFulfilments) {
                         status = 'Mixed';
@@ -1606,12 +2130,6 @@ const TraceDetailModal: React.FC<{
                           </td>
                           <td className="violations-cell">
                             {detail.totalViolations}
-                          </td>
-                          <td className="vacuous-fulfilments-cell">
-                            {detail.totalVacuousFulfilments}
-                          </td>
-                          <td className="vacuous-violations-cell">
-                            {detail.totalVacuousViolations}
                           </td>
                           <td className={`status-cell ${status.toLowerCase().replace(' ', '-')}`}>
                             {status}
