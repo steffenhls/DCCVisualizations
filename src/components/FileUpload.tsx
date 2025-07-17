@@ -154,7 +154,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <h3>Required Files:</h3>
           <ul>
             <li className={uploadedFiles.declarativeModel ? 'completed' : ''}>
-              <strong>DECLARE Model:</strong> .decl file containing DECLARE constraints (e.g., StepsisModel.decl)
+              <strong>DECLARE Model:</strong> .decl file containing DECLARE constraints (e.g., SepsisModel.decl)
             </li>
             <li className={uploadedFiles.analysisOverview ? 'completed' : ''}>
               <strong>Analysis Overview:</strong> CSV file with constraint-level statistics (e.g., analysis_overview.csv)
