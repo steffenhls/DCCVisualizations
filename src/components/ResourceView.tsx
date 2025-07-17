@@ -119,6 +119,7 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
       violations: number;
       uniqueTraces: Set<string>;
       uniqueActivities: Set<string>;
+      activities: Set<string>;
     }>();
 
     // Use violation data to build resource statistics
@@ -130,7 +131,8 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
           resource,
           violations: 0,
           uniqueTraces: new Set(),
-          uniqueActivities: new Set()
+          uniqueActivities: new Set(),
+          activities: new Set()
         });
       }
       
@@ -138,6 +140,7 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
       resourceStats.violations += 1; // Each violation entry represents one violation
       resourceStats.uniqueTraces.add(violation.traceId);
       resourceStats.uniqueActivities.add(violation.activity);
+      resourceStats.activities.add(violation.activity);
     });
     
     // Convert to array and sort by violations
@@ -146,7 +149,8 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
         resource: stats.resource,
         violations: stats.violations,
         uniqueTraces: stats.uniqueTraces.size,
-        uniqueActivities: stats.uniqueActivities.size
+        uniqueActivities: stats.uniqueActivities.size,
+        activities: Array.from(stats.activities)
       }))
       .sort((a, b) => b.violations - a.violations);
   }, [violationData]);
@@ -185,7 +189,7 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
             </div>
             <div style={{ background: 'white', padding: '1rem', borderRadius: '6px', textAlign: 'center' }}>
               <h4>Activities Involved</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12' }}>{new Set(resourceViolations.flatMap(r => r.uniqueActivities)).size}</p>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12' }}>{new Set(resourceViolations.flatMap(r => r.activities)).size}</p>
             </div>
             <div style={{ background: 'white', padding: '1rem', borderRadius: '6px', textAlign: 'center' }}>
               <h4>Traces Affected</h4>

@@ -86,63 +86,10 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
   return violationData;
 }
 
-// Helper to parse ISO timestamps and compute duration in minutes
-function getTraceDurationMinutes(trace: DashboardTrace): number | null {
-  if (!trace.events || trace.events.length < 2) return null;
-  // Sort events by timestamp (ascending)
-  const sortedEvents = [...trace.events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  const first = new Date(sortedEvents[0].timestamp).getTime();
-  const last = new Date(sortedEvents[sortedEvents.length - 1].timestamp).getTime();
-  if (isNaN(first) || isNaN(last)) return null;
-  return (last - first) / (1000 * 60); // minutes
-}
-
-const BIN_SIZE = 60 * 24; // 1 day in minutes
-const MAX_BINS = 20;
-
 // Time View Component
 const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
   // Extract comprehensive violation data
   const violationData = useMemo(() => extractViolationData(traces, constraints), [traces, constraints]);
-  
-  // Resource violation analysis
-  const resourceViolations = useMemo(() => {
-    const resourceViolationsMap = new Map<string, {
-      resource: string;
-      violations: number;
-      uniqueTraces: Set<string>;
-      uniqueActivities: Set<string>;
-    }>();
-    
-    // Use violation data to build resource statistics
-    violationData.forEach(violation => {
-      const resourceName = violation.resource || 'Unassigned';
-      
-      if (!resourceViolationsMap.has(resourceName)) {
-        resourceViolationsMap.set(resourceName, {
-          resource: resourceName,
-          violations: 0,
-          uniqueTraces: new Set(),
-          uniqueActivities: new Set()
-        });
-      }
-      
-      const resourceStats = resourceViolationsMap.get(resourceName)!;
-      resourceStats.violations += 1; // Each violation entry represents one violation
-      resourceStats.uniqueTraces.add(violation.traceId);
-      resourceStats.uniqueActivities.add(violation.activity);
-    });
-    
-    // Convert to array and sort by violations
-    return Array.from(resourceViolationsMap.values())
-      .map(stats => ({
-        resource: stats.resource,
-        violations: stats.violations,
-        uniqueTraces: stats.uniqueTraces.size,
-        uniqueActivities: stats.uniqueActivities.size
-      }))
-      .sort((a, b) => b.violations - a.violations);
-  }, [violationData]);
 
   // Calculate trace duration distribution
   const traceDurationData = useMemo(() => {

@@ -541,7 +541,7 @@ export class DataProcessor {
     alignedLog.forEach(case_ => {
       alignedLogMap.set(case_.caseId, case_.events);
     });
-
+    
     // Build constraint-level grouping and statistics from traceConstraintMap
     const constraintLevelDetail = buildConstraintLevelDetail(analysisDetail);
     // Now you have constraintLevelDetail.constraintTraceMap and constraintLevelDetail.constraintStatsMap for UI use
@@ -587,24 +587,24 @@ export class DataProcessor {
         return {
           ...constraint,
           statistics: {
-            constraintId: constraint.id,
-            activations: 0,
-            fulfilments: 0,
-            violations: 0,
-            violationRate: 0,
-            severity: 'LOW' as const
+        constraintId: constraint.id,
+        activations: 0,
+        fulfilments: 0,
+        violations: 0,
+        violationRate: 0,
+        severity: 'LOW' as const
           },
           violationCount: 0,
           fulfilmentCount: 0,
           violationRate: 0,
           severity: 'LOW' as const,
           tag: taggedConstraint?.tag || {
-            priority: 'MEDIUM',
-            quality: false,
-            efficiency: false,
-            compliance: false,
-          }
-        };
+          priority: 'MEDIUM',
+          quality: false,
+          efficiency: false,
+          compliance: false,
+        }
+      };
       }
     });
     
@@ -635,17 +635,13 @@ export class DataProcessor {
             case 'vac. fulfillment':
               fulfilments += 1;
               constraintFulfilments += 1;
-              if (resultType === 'fulfillment') {
-                fulfilledConstraints.push(mapConstraintIdFromCsv(constraintId));
-              }
+              fulfilledConstraints.push(mapConstraintIdFromCsv(constraintId));
               break;
             case 'violation':
             case 'vac. violation':
               violations += 1;
               constraintViolations += 1;
-              if (resultType === 'violation') {
-                violatedConstraints.push(mapConstraintIdFromCsv(constraintId));
-              }
+              violatedConstraints.push(mapConstraintIdFromCsv(constraintId));
               break;
           }
           activations += 1;

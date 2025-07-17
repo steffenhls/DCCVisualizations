@@ -56,45 +56,21 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         // Read DECLARE model
         if (uploadedFiles.declarativeModel) {
           modelText = await readFileAsText(uploadedFiles.declarativeModel);
-          console.log('AnalysisDashboard - DECLARE model file:', {
-            fileName: uploadedFiles.declarativeModel.name,
-            fileSize: uploadedFiles.declarativeModel.size,
-            contentLength: modelText.length,
-            sampleContent: modelText.substring(0, 200)
-          });
         }
 
         // Read analysis overview
         if (uploadedFiles.analysisOverview) {
           analysisOverviewText = await readFileAsText(uploadedFiles.analysisOverview);
-          console.log('AnalysisDashboard - Analysis overview file:', {
-            fileName: uploadedFiles.analysisOverview.name,
-            fileSize: uploadedFiles.analysisOverview.size,
-            contentLength: analysisOverviewText.length,
-            sampleContent: analysisOverviewText.substring(0, 200)
-          });
         }
 
         // Read analysis detail
         if (uploadedFiles.analysisDetail) {
           analysisDetailText = await readFileAsText(uploadedFiles.analysisDetail);
-          console.log('AnalysisDashboard - Analysis detail file:', {
-            fileName: uploadedFiles.analysisDetail.name,
-            fileSize: uploadedFiles.analysisDetail.size,
-            contentLength: analysisDetailText.length,
-            sampleContent: analysisDetailText.substring(0, 200)
-          });
         }
 
         // Read replay overview
         if (uploadedFiles.replayOverview) {
           replayOverviewText = await readFileAsText(uploadedFiles.replayOverview);
-          console.log('AnalysisDashboard - Replay overview file:', {
-            fileName: uploadedFiles.replayOverview.name,
-            fileSize: uploadedFiles.replayOverview.size,
-            contentLength: replayOverviewText.length,
-            sampleContent: replayOverviewText.substring(0, 200)
-          });
         }
 
         // Read event log
@@ -119,15 +95,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         const eventLog = eventLogText ? DataProcessor.parseEventLog(eventLogText) : [];
         const alignedLog = alignedLogText ? DataProcessor.parseAlignedLog(alignedLogText) : [];
 
-        console.log('AnalysisDashboard - Parsing results:', {
-          constraints: constraints.length,
-          analysisOverview: analysisOverview.length,
-          analysisDetailTraces: analysisDetail.size,
-          replayOverview: replayOverview.length,
-          eventLog: eventLog.length,
-          alignedLog: alignedLog.length
-        });
-
         // Process all data together
         const processed = DataProcessor.processData(
           constraints,
@@ -138,13 +105,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           alignedLog,
           taggedConstraints
         );
-
-        console.log('AnalysisDashboard - Processing results:', {
-          dashboardConstraints: processed.dashboardConstraints.length,
-          dashboardTraces: processed.dashboardTraces.length,
-          overview: processed.overview
-        });
-
+        
         setOverview(processed.overview);
         setTraces(processed.dashboardTraces);
         setModelVisualization(processed.modelVisualization);
@@ -218,9 +179,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           }
         } else {
           // Filter by constraint types (existing logic)
-          const traceConstraintTypes = [...trace.violatedConstraints, ...trace.fulfilledConstraints]
+        const traceConstraintTypes = [...trace.violatedConstraints, ...trace.fulfilledConstraints]
             .map(id => processedConstraints.find(c => c.id === id)?.type)
-            .filter(Boolean);
+          .filter(Boolean);
           if (!traceFilter.constraintTypes.some(type => traceConstraintTypes.includes(type))) {
             return false;
           }
@@ -435,11 +396,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           >
             Time
           </button>
-        </div>
+      </div>
 
         {/* View Content */}
         <div className="view-content">
-          {activeView === 'overview' && overview && (
+        {activeView === 'overview' && overview && (
             <OverviewView 
               overview={overview} 
               modelVisualization={modelVisualization} 
@@ -454,31 +415,31 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               onNavigateToConstraintsWithHighPriority={handleNavigateToConstraintsWithHighPriority}
               onNavigateToVariants={handleNavigateToVariants}
             />
-          )}
+        )}
 
-          {activeView === 'constraints' && (
-            <ConstraintsView 
+        {activeView === 'constraints' && (
+          <ConstraintsView 
               constraints={processedConstraints} 
-              modelVisualization={modelVisualization}
+            modelVisualization={modelVisualization}
               onConstraintClick={handleConstraintClick}
               initialFilter={initialConstraintFilter}
               onFilterSet={() => setInitialConstraintFilter(null)}
               onNavigateToTracesWithVisibleConstraints={handleNavigateToTracesWithVisibleConstraints}
-            />
-          )}
+          />
+        )}
 
-          {activeView === 'traces' && (
-            <TracesView
-              traces={filteredAndSortedTraces()}
-              traceFilter={traceFilter}
-              setTraceFilter={setTraceFilter}
-              traceSort={traceSort}
-              setTraceSort={setTraceSort}
-              onTraceClick={handleTraceClick}
+        {activeView === 'traces' && (
+          <TracesView
+            traces={filteredAndSortedTraces()}
+            traceFilter={traceFilter}
+            setTraceFilter={setTraceFilter}
+            traceSort={traceSort}
+            setTraceSort={setTraceSort}
+            onTraceClick={handleTraceClick}
               processedConstraints={processedConstraints}
               totalTraces={traces.length}
-            />
-          )}
+          />
+        )}
 
           {activeView === 'variants' && (
             <VariantsView
@@ -739,7 +700,7 @@ const OverviewView: React.FC<{
           <h3>Overall Fitness</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallFitness * 100)}
-          </div>
+        </div>
         </div>
         <div 
           className="kpi-card"
@@ -749,7 +710,7 @@ const OverviewView: React.FC<{
           <h3>Overall Conformance</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallConformance * 100)}
-          </div>
+        </div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -761,7 +722,7 @@ const OverviewView: React.FC<{
           <h3>Overall Compliance</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallCompliance * 100)}
-          </div>
+        </div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -773,7 +734,7 @@ const OverviewView: React.FC<{
           <h3>Overall Quality</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallQuality * 100)}
-          </div>
+        </div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -785,7 +746,7 @@ const OverviewView: React.FC<{
           <h3>Overall Efficiency</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallEfficiency * 100)}
-          </div>
+        </div>
         </div>
         <div 
           className="kpi-card critical clickable" 
@@ -1277,16 +1238,16 @@ const ConstraintsView: React.FC<{
                 </div>
               </div>
               {constraint.tag && (
-                <div className="tag-categories">
-                  {constraint.tag.quality && (
-                    <span className="category quality">Quality</span>
-                  )}
-                  {constraint.tag.efficiency && (
-                    <span className="category efficiency">Efficiency</span>
-                  )}
-                  {constraint.tag.compliance && (
-                    <span className="category compliance">Compliance</span>
-                  )}
+                  <div className="tag-categories">
+                    {constraint.tag.quality && (
+                      <span className="category quality">Quality</span>
+                    )}
+                    {constraint.tag.efficiency && (
+                      <span className="category efficiency">Efficiency</span>
+                    )}
+                    {constraint.tag.compliance && (
+                      <span className="category compliance">Compliance</span>
+                    )}
                 </div>
               )}
             </div>
@@ -1433,7 +1394,7 @@ const TracesView: React.FC<{
                   >
                     ×
                   </button>
-                </div>
+        </div>
               );
             })}
             <button
@@ -1445,7 +1406,7 @@ const TracesView: React.FC<{
             >
               Clear All
             </button>
-          </div>
+      </div>
         </div>
       )}
 
@@ -1982,13 +1943,6 @@ const TraceDetailModal: React.FC<{
   trace: DashboardTrace;
   onClose: () => void;
 }> = ({ trace, onClose }) => {
-  console.log('TraceDetailModal - Trace data:', {
-    caseId: trace.caseId,
-    eventsCount: trace.events.length,
-    events: trace.events,
-    alignedEventsCount: trace.alignedEvents.length,
-    alignedEvents: trace.alignedEvents
-  });
 
   // Dynamic programming algorithm to find optimal alignment
   const findOptimalAlignment = (seq1: string[], seq2: string[]) => {
@@ -2271,18 +2225,18 @@ const TraceDetailModal: React.FC<{
           <div className="trace-events">
             <h3>Events</h3>
             {trace.events.length > 0 ? (
-              <div className="events-timeline">
-                {trace.events.map((event, index) => (
-                  <div key={event.id} className="event-item">
-                    <span className="event-position">{index + 1}</span>
-                    <span className="event-activity">{event.activity}</span>
-                    <span className="event-timestamp">{new Date(event.timestamp).toLocaleString()}</span>
-                    {event.resource && (
-                      <span className="event-resource">{event.resource}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+            <div className="events-timeline">
+              {trace.events.map((event, index) => (
+                <div key={event.id} className="event-item">
+                  <span className="event-position">{index + 1}</span>
+                  <span className="event-activity">{event.activity}</span>
+                  <span className="event-timestamp">{new Date(event.timestamp).toLocaleString()}</span>
+                  {event.resource && (
+                    <span className="event-resource">{event.resource}</span>
+                  )}
+                </div>
+              ))}
+            </div>
             ) : (
               <div style={{ padding: '1rem', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', color: '#6c757d' }}>
                 <p>No events found for this trace.</p>
@@ -2294,8 +2248,8 @@ const TraceDetailModal: React.FC<{
                   <li>The case ID doesn't match between event log and analysis files</li>
                   <li>The event log file format is not supported</li>
                 </ul>
-              </div>
-            )}
+            </div>
+          )}
           </div>
         </div>
       </div>
