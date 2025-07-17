@@ -487,6 +487,52 @@ const OverviewView: React.FC<{
   onNavigateToConstraintsWithHighPriority?: () => void;
 }> = ({ overview, modelVisualization, onConstraintClick, onNavigateToTraces, onNavigateToConstraints, onNavigateToTracesWithFitnessSort, onNavigateToConstraintsWithCompliance, onNavigateToConstraintsWithQuality, onNavigateToConstraintsWithEfficiency, onNavigateToConstraintsWithCriticalPriority, onNavigateToConstraintsWithHighPriority }) => {
   
+  // Animated counter states
+  const [animatedValues, setAnimatedValues] = useState({
+    totalTraces: 0,
+    totalConstraints: 0,
+    overallFitness: 0,
+    overallConformance: 0,
+    overallCompliance: 0,
+    overallQuality: 0,
+    overallEfficiency: 0,
+    criticalViolations: 0,
+    highPriorityViolations: 0
+  });
+
+  // Animate values when component mounts
+  useEffect(() => {
+    const duration = 1500; // 1.5 seconds
+    const steps = 60; // 60 steps for smooth animation
+    const stepDuration = duration / steps;
+
+    const animateValue = (start: number, end: number, setter: (value: number) => void) => {
+      const increment = (end - start) / steps;
+      let current = start;
+      
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= end) {
+          setter(end);
+          clearInterval(timer);
+        } else {
+          setter(current);
+        }
+      }, stepDuration);
+    };
+
+    // Start animations
+    animateValue(0, overview.totalTraces, (value) => setAnimatedValues(prev => ({ ...prev, totalTraces: Math.floor(value) })));
+    animateValue(0, overview.totalConstraints, (value) => setAnimatedValues(prev => ({ ...prev, totalConstraints: Math.floor(value) })));
+    animateValue(0, overview.overallFitness, (value) => setAnimatedValues(prev => ({ ...prev, overallFitness: value })));
+    animateValue(0, overview.overallConformance, (value) => setAnimatedValues(prev => ({ ...prev, overallConformance: value })));
+    animateValue(0, overview.overallCompliance, (value) => setAnimatedValues(prev => ({ ...prev, overallCompliance: value })));
+    animateValue(0, overview.overallQuality, (value) => setAnimatedValues(prev => ({ ...prev, overallQuality: value })));
+    animateValue(0, overview.overallEfficiency, (value) => setAnimatedValues(prev => ({ ...prev, overallEfficiency: value })));
+    animateValue(0, overview.criticalViolations, (value) => setAnimatedValues(prev => ({ ...prev, criticalViolations: Math.floor(value) })));
+    animateValue(0, overview.highPriorityViolations, (value) => setAnimatedValues(prev => ({ ...prev, highPriorityViolations: Math.floor(value) })));
+  }, [overview]);
+
   const handleMouseEnter = (event: React.MouseEvent, tooltip: string) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
@@ -545,6 +591,54 @@ const OverviewView: React.FC<{
     }
   };
 
+  // Helper function to render circular progress
+  const renderCircularProgress = (percentage: number, size: number = 80) => {
+    const radius = (size - 10) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDasharray = circumference;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    
+    return (
+      <div style={{ position: 'relative', width: size, height: size }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+          {/* Background circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.3)"
+            strokeWidth="6"
+          />
+          {/* Progress circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="white"
+            strokeWidth="6"
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+          />
+        </svg>
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: '0.9rem',
+          fontWeight: 'bold',
+          color: 'white'
+        }}>
+          {percentage === 100 ? '100%' : percentage.toFixed(1) + '%'}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="overview-view">
       {/* KPI Cards */}
@@ -557,7 +651,7 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToTraces)}
         >
           <h3>Total Traces</h3>
-          <div className="kpi-value">{overview.totalTraces}</div>
+          <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.totalTraces}</div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -567,7 +661,7 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToConstraints)}
         >
           <h3>Total Constraints</h3>
-          <div className="kpi-value">{overview.totalConstraints}</div>
+          <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.totalConstraints}</div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -577,7 +671,9 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToTracesWithFitnessSort)}
         >
           <h3>Overall Fitness</h3>
-          <div className="kpi-value">{(overview.overallFitness * 100).toFixed(1)}%</div>
+          <div className="kpi-value-with-progress">
+            {renderCircularProgress(animatedValues.overallFitness * 100)}
+          </div>
         </div>
         <div 
           className="kpi-card"
@@ -585,7 +681,9 @@ const OverviewView: React.FC<{
           onMouseLeave={handleMouseLeave}
         >
           <h3>Overall Conformance</h3>
-          <div className="kpi-value">{(overview.overallConformance * 100).toFixed(1)}%</div>
+          <div className="kpi-value-with-progress">
+            {renderCircularProgress(animatedValues.overallConformance * 100)}
+          </div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -595,7 +693,9 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToConstraintsWithCompliance)}
         >
           <h3>Overall Compliance</h3>
-          <div className="kpi-value">{(overview.overallCompliance * 100).toFixed(1)}%</div>
+          <div className="kpi-value-with-progress">
+            {renderCircularProgress(animatedValues.overallCompliance * 100)}
+          </div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -605,7 +705,9 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToConstraintsWithQuality)}
         >
           <h3>Overall Quality</h3>
-          <div className="kpi-value">{(overview.overallQuality * 100).toFixed(1)}%</div>
+          <div className="kpi-value-with-progress">
+            {renderCircularProgress(animatedValues.overallQuality * 100)}
+          </div>
         </div>
         <div 
           className="kpi-card clickable" 
@@ -615,7 +717,9 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToConstraintsWithEfficiency)}
         >
           <h3>Overall Efficiency</h3>
-          <div className="kpi-value">{(overview.overallEfficiency * 100).toFixed(1)}%</div>
+          <div className="kpi-value-with-progress">
+            {renderCircularProgress(animatedValues.overallEfficiency * 100)}
+          </div>
         </div>
         <div 
           className="kpi-card critical clickable" 
@@ -625,7 +729,7 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToConstraintsWithCriticalPriority)}
         >
           <h3>Critical Violations</h3>
-          <div className="kpi-value">{overview.criticalViolations}</div>
+          <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.criticalViolations}</div>
         </div>
         <div 
           className="kpi-card warning clickable" 
@@ -635,7 +739,7 @@ const OverviewView: React.FC<{
           onClick={() => handleClick(onNavigateToConstraintsWithHighPriority)}
         >
           <h3>High Priority Violations</h3>
-          <div className="kpi-value">{overview.highPriorityViolations}</div>
+          <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.highPriorityViolations}</div>
         </div>
       </div>
 
@@ -1521,36 +1625,6 @@ const TraceDetailModal: React.FC<{
             </div>
           )}
 
-          <div className="trace-events">
-            <h3>Events</h3>
-            {trace.events.length > 0 ? (
-              <div className="events-timeline">
-                {trace.events.map((event, index) => (
-                  <div key={event.id} className="event-item">
-                    <span className="event-position">{index + 1}</span>
-                    <span className="event-activity">{event.activity}</span>
-                    <span className="event-timestamp">{new Date(event.timestamp).toLocaleString()}</span>
-                    {event.resource && (
-                      <span className="event-resource">{event.resource}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: '1rem', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', color: '#6c757d' }}>
-                <p>No events found for this trace.</p>
-                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                  This could be because:
-                </p>
-                <ul style={{ textAlign: 'left', display: 'inline-block', marginTop: '0.5rem' }}>
-                  <li>No event log file was uploaded</li>
-                  <li>The case ID doesn't match between event log and analysis files</li>
-                  <li>The event log file format is not supported</li>
-                </ul>
-              </div>
-            )}
-          </div>
-
           {trace.alignedEvents.length > 0 && (
             <div className="trace-alignment">
               <h3>Alignment Analysis</h3>
@@ -1675,6 +1749,36 @@ const TraceDetailModal: React.FC<{
               </div>
             </div>
           )}
+
+          <div className="trace-events">
+            <h3>Events</h3>
+            {trace.events.length > 0 ? (
+              <div className="events-timeline">
+                {trace.events.map((event, index) => (
+                  <div key={event.id} className="event-item">
+                    <span className="event-position">{index + 1}</span>
+                    <span className="event-activity">{event.activity}</span>
+                    <span className="event-timestamp">{new Date(event.timestamp).toLocaleString()}</span>
+                    {event.resource && (
+                      <span className="event-resource">{event.resource}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '1rem', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', color: '#6c757d' }}>
+                <p>No events found for this trace.</p>
+                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                  This could be because:
+                </p>
+                <ul style={{ textAlign: 'left', display: 'inline-block', marginTop: '0.5rem' }}>
+                  <li>No event log file was uploaded</li>
+                  <li>The case ID doesn't match between event log and analysis files</li>
+                  <li>The event log file format is not supported</li>
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
