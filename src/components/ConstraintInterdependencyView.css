@@ -1,0 +1,62 @@
+.interdependency-view {
+  padding: 1rem;
+}
+
+.matrix-container {
+  overflow-x: auto;
+  padding-top: 20px;
+}
+
+.interdependency-view table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.interdependency-view th, 
+.interdependency-view td {
+  border: 1px solid #dee2e6;
+  padding: 0.2rem;
+  text-align: center;
+  min-width: 50px;
+  max-width: 100px;
+  height: 35px;
+  font-size: 0.6rem;
+}
+
+.interdependency-view th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.interdependency-view thead th {
+  height: auto;
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.interdependency-view th div {
+  transform: none;
+  white-space: normal;
+  width: auto;
+  height: auto;
+  font-size: 0.4rem;
+}
+
+.interdependency-view th div span {
+  display: inline-block;
+  padding: 0;
+  word-break: break-all;
+}
+
+.interdependency-view tbody th {
+  text-align: right;
+  white-space: normal;
+  font-size: 0.4rem;
+  word-break: break-all;
+}
+
+.interdependency-view td {
+  color: white;
+  font-weight: bold;
+} 

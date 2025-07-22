@@ -549,6 +549,7 @@ export class DataProcessor {
     overview: DashboardOverview;
     modelVisualization: ModelVisualization;
     constraintGroups: ConstraintGroup[];
+    coViolationMatrix: Array<Array<number>>;
   } {
     
     // Create constraint statistics map
@@ -761,12 +762,16 @@ export class DataProcessor {
     // Build constraint groups
     const constraintGroups = this.buildConstraintGroups(dashboardConstraints);
     
+    // Calculate co-violation matrix
+    const coViolationMatrix = this.calculateCoViolationMatrix(dashboardConstraints, dashboardTraces);
+
     return {
       dashboardConstraints,
       dashboardTraces,
       overview,
       modelVisualization,
-      constraintGroups
+      constraintGroups,
+      coViolationMatrix
     };
   }
 
@@ -897,5 +902,36 @@ export class DataProcessor {
     });
     
     return groups;
+  }
+
+  // Calculate co-violation matrix
+  private static calculateCoViolationMatrix(constraints: DashboardConstraint[], traces: DashboardTrace[]): number[][] {
+    const constraintIds = constraints.map(c => c.id);
+    const matrixSize = constraintIds.length;
+    const matrix = Array(matrixSize).fill(0).map(() => Array(matrixSize).fill(0));
+    const constraintIndexMap = new Map(constraintIds.map((id, index) => [id, index]));
+
+    for (const trace of traces) {
+      const violatedConstraints = trace.violatedConstraints;
+      for (let i = 0; i < violatedConstraints.length; i++) {
+        for (let j = i; j < violatedConstraints.length; j++) {
+          const id1 = violatedConstraints[i];
+          const id2 = violatedConstraints[j];
+          const index1 = constraintIndexMap.get(id1);
+          const index2 = constraintIndexMap.get(id2);
+
+          if (index1 !== undefined && index2 !== undefined) {
+            if (index1 === index2) {
+              matrix[index1][index2]++;
+            } else {
+              matrix[index1][index2]++;
+              matrix[index2][index1]++;
+            }
+          }
+        }
+      }
+    }
+    
+    return matrix;
   }
 } 

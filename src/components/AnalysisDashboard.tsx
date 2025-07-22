@@ -12,6 +12,7 @@ import CytoscapeModel from './CytoscapeModel';
 import ResourceView from './ResourceView';
 import TimeView from './TimeView';
 import ProcessModelView from './ProcessModelView';
+import ConstraintInterdependencyView from './ConstraintInterdependencyView';
 import './AnalysisDashboard.css';
 
 interface AnalysisDashboardProps {
@@ -29,6 +30,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [traces, setTraces] = useState<DashboardTrace[]>([]);
   const [modelVisualization, setModelVisualization] = useState<ModelVisualization | null>(null);
   const [processedConstraints, setProcessedConstraints] = useState<DashboardConstraint[]>([]);
+  const [coViolationMatrix, setCoViolationMatrix] = useState<number[][]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'overview' | 'constraints' | 'traces' | 'variants' | 'resource' | 'time' | 'model'>('overview');
@@ -110,6 +112,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         setTraces(processed.dashboardTraces);
         setModelVisualization(processed.modelVisualization);
         setProcessedConstraints(processed.dashboardConstraints);
+        setCoViolationMatrix(processed.coViolationMatrix);
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to process files');
@@ -425,6 +428,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               initialFilter={initialConstraintFilter}
               onFilterSet={() => setInitialConstraintFilter(null)}
               onNavigateToTracesWithVisibleConstraints={handleNavigateToTracesWithVisibleConstraints}
+              coViolationMatrix={coViolationMatrix}
           />
         )}
 
@@ -781,7 +785,8 @@ const ConstraintsView: React.FC<{
   initialFilter: string | null;
   onFilterSet: () => void;
   onNavigateToTracesWithVisibleConstraints: (visibleConstraintIds: string[]) => void;
-}> = ({ constraints, modelVisualization, onConstraintClick, initialFilter, onFilterSet, onNavigateToTracesWithVisibleConstraints }) => {
+  coViolationMatrix: number[][];
+}> = ({ constraints, modelVisualization, onConstraintClick, initialFilter, onFilterSet, onNavigateToTracesWithVisibleConstraints, coViolationMatrix }) => {
   const [constraintFilter, setConstraintFilter] = useState({
     priority: '',
     categories: [] as string[],
@@ -1278,6 +1283,11 @@ const ConstraintsView: React.FC<{
           </div>
         ))}
       </div>
+
+      <ConstraintInterdependencyView
+        constraints={constraints}
+        coViolationMatrix={coViolationMatrix}
+      />
     </div>
   );
 };

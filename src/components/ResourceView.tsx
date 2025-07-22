@@ -210,12 +210,12 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={resourceViolations} margin={{ top: 20, right: 30, left: 10, bottom: 60 }}>
+              <BarChart data={resourceViolations} margin={{ top: 20, right: 30, left: 10, bottom: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="resource" angle={-45} textAnchor="end">
                   <Label value="Resource" offset={20} position="bottom" />
                 </XAxis>
-                <YAxis allowDecimals={false} label={{ value: 'Number of Violations', angle: -90, position: 'insideLeft', offset: 10 }} />
+                <YAxis allowDecimals={false} label={{ value: 'Number of Violations', angle: -90, position: 'insideLeft' }} />
                 <Tooltip formatter={(value: any, name: string) => {
                   const labels: Record<string, string> = {
                     'violations': 'Violations',

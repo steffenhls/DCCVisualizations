@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DashboardTrace, DashboardConstraint } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label, Legend } from 'recharts';
+import './TimeView.css';
 
 interface TimeViewProps {
   traces: DashboardTrace[];
@@ -86,13 +87,38 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
   return violationData;
 }
 
+function parseTimeConstraint(constraintId: string): { base: string; time: string } {
+  const match = constraintId.match(/^(.*?)\[(\d+,\s*\d+,\s*\w+)\]$/);
+  if (match) {
+    const timeParts = match[2].split(',');
+    const unit = timeParts[2].trim() === 'm' ? 'min' : timeParts[2].trim();
+    return {
+      base: match[1],
+      time: `${timeParts[0]}-${timeParts[1]}${unit}`
+    };
+  }
+  return { base: constraintId, time: '-' };
+}
+
 // Time View Component
 const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
+  // Binning state for Trace Duration chart
+  const [minDuration, setMinDuration] = useState(0);
+  const [maxDuration, setMaxDuration] = useState(20);
+  const [binSize, setBinSize] = useState(1);
+  const [timeUnit, setTimeUnit] = useState<'days' | 'hours' | 'minutes'>('days');
+
+  // Binning state for Heatmap
+  const [heatmapTimeUnit, setHeatmapTimeUnit] = useState<'days' | 'hours' | 'minutes'>('days');
+  const [heatmapBinSize, setHeatmapBinSize] = useState(1);
+
   // Extract comprehensive violation data
   const violationData = useMemo(() => extractViolationData(traces, constraints), [traces, constraints]);
 
   // Calculate trace duration distribution
   const traceDurationData = useMemo(() => {
+    const unitMultiplier = timeUnit === 'days' ? 1 : timeUnit === 'hours' ? 24 : 1440;
+    
     const durations = traces.map(trace => {
       if (trace.events.length === 0) return null;
       
@@ -106,43 +132,78 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
       const durationDays = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60 * 24);
       
       return {
-        duration: durationDays,
+        duration: durationDays * unitMultiplier,
         isConformant: trace.violations === 0
       };
     }).filter(Boolean) as { duration: number; isConformant: boolean }[];
     
-    // Bin durations into 1-day intervals, with 19+ grouped together
-    const bins: { [key: number]: { conformant: number; nonConformant: number } } = {};
+    // Bin durations based on UI controls
+    const bins: { [key: string]: { conformant: number; nonConformant: number } } = {};
+    const numBins = Math.ceil((maxDuration - minDuration) / binSize);
+
+    for (let i = 0; i < numBins; i++) {
+      const binStart = minDuration + i * binSize;
+      const binEnd = binStart + binSize;
+      const binLabel = `${binStart}-${binEnd}`;
+      bins[binLabel] = { conformant: 0, nonConformant: 0 };
+    }
     
     durations.forEach(({ duration, isConformant }) => {
-      const bin = duration >= 19 ? 19 : Math.floor(duration); // Group 19+ together
-      if (!bins[bin]) {
-        bins[bin] = { conformant: 0, nonConformant: 0 };
-      }
-      if (isConformant) {
-        bins[bin].conformant++;
-      } else {
-        bins[bin].nonConformant++;
+      if (duration >= minDuration && duration < maxDuration) {
+        const binIndex = Math.floor((duration - minDuration) / binSize);
+        const binStart = minDuration + binIndex * binSize;
+        const binEnd = binStart + binSize;
+        const binLabel = `${binStart}-${binEnd}`;
+        if (bins[binLabel]) {
+          if (isConformant) {
+            bins[binLabel].conformant++;
+          } else {
+            bins[binLabel].nonConformant++;
+          }
+        }
       }
     });
     
-    return Object.entries(bins).map(([day, counts]) => ({
-      day: parseInt(day),
-      dayLabel: parseInt(day) === 19 ? '19+' : day.toString(),
+    return Object.entries(bins).map(([dayLabel, counts]) => ({
+      dayLabel,
       conformant: counts.conformant,
       nonConformant: counts.nonConformant
-    })).sort((a, b) => a.day - b.day);
-  }, [traces]);
+    }));
+  }, [traces, minDuration, maxDuration, binSize, timeUnit]);
 
   // Heatmap data for violation timing
   const heatmapData = useMemo(() => {
     if (violationData.length === 0) return { cells: [], timeUnit: 'days', binSizeMinutes: 1440, maxTimeMinutes: 0, timeBins: 0 };
     
-    // Use same bins as Trace Duration Distribution (1 day = 1440 minutes)
-    const maxTimeMinutes = Math.max(...violationData.map(v => v.relativeTimeMinutes));
-    const binSizeMinutes = 1440; // 1 day in minutes
-    const timeBins = Math.min(20, Math.ceil(maxTimeMinutes / binSizeMinutes)); // Max 20 bins, 1 day each
-    const timeUnit = 'days';
+    const maxTimeMinutes = Math.max(0, ...violationData.map(v => v.relativeTimeMinutes));
+
+    let binSizeMinutes: number;
+    let timeUnitLabel: string = heatmapTimeUnit;
+    let binUnitConversion = 1;
+
+    switch (heatmapTimeUnit) {
+      case 'hours':
+        binSizeMinutes = heatmapBinSize * 60;
+        binUnitConversion = 60;
+        break;
+      case 'minutes':
+        binSizeMinutes = heatmapBinSize;
+        binUnitConversion = 1; // Already in minutes
+        timeUnitLabel = 'mins';
+        break;
+      case 'days':
+      default:
+        binSizeMinutes = heatmapBinSize * 1440;
+        binUnitConversion = 1440;
+        break;
+    }
+
+    // Prevent division by zero or negative bins
+    if (binSizeMinutes <= 0) {
+      binSizeMinutes = 1;
+    }
+
+    const timeBins = Math.min(20, Math.ceil(maxTimeMinutes / binSizeMinutes));
     
     // Get unique constraints
     const constraints = Array.from(new Set(violationData.map(v => v.constraintId)));
@@ -171,10 +232,13 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
         const startTime = i * binSizeMinutes;
         const endTime = (i + 1) * binSizeMinutes;
         
+        const convertedStart = Math.floor(startTime / binUnitConversion);
+        const convertedEnd = Math.ceil(endTime / binUnitConversion);
+        
         // Create proper time range labels with overflow indication
         const timeRange = i === timeBins - 1 && maxTimeMinutes > timeBins * binSizeMinutes
-          ? `${i}+ days` // Last bin shows "+" for overflow
-          : `${i}–${i + 1} days`;
+          ? `${convertedStart}+ ${timeUnitLabel}`
+          : `${convertedStart}–${convertedEnd} ${timeUnitLabel}`;
         
         // Count violations in this time bin for this constraint
         const violationsInBin = violationData.filter(v => 
@@ -197,8 +261,8 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
       }
     });
     
-    return { cells: heatmapCells, timeUnit, binSizeMinutes, maxTimeMinutes, timeBins };
-  }, [violationData]);
+    return { cells: heatmapCells, timeUnit: timeUnitLabel, binSizeMinutes, maxTimeMinutes, timeBins, binUnitConversion };
+  }, [violationData, heatmapTimeUnit, heatmapBinSize]);
 
   // Dotted chart data - all traces on absolute time
   const dottedChartData = useMemo(() => {
@@ -261,6 +325,21 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
     [constraints]
   );
 
+  const longestTraceDurationDays = useMemo(() => {
+    if (traces.length === 0) return 0;
+
+    const durations = traces.map(trace => {
+      if (!trace.events || trace.events.length < 2) return 0;
+      const sortedEvents = [...trace.events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      const first = new Date(sortedEvents[0].timestamp).getTime();
+      const last = new Date(sortedEvents[sortedEvents.length - 1].timestamp).getTime();
+      if (isNaN(first) || isNaN(last)) return 0;
+      return (last - first) / (1000 * 60 * 60 * 24); // duration in days
+    });
+
+    return Math.ceil(Math.max(...durations));
+  }, [traces]);
+
   return (
     <div>
       <div style={{ marginBottom: '2rem' }}>
@@ -283,8 +362,8 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
               <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12' }}>{new Set(violationData.map(v => v.constraintId)).size}</p>
             </div>
             <div style={{ background: 'white', padding: '1rem', borderRadius: '6px', textAlign: 'center' }}>
-              <h4>Time Range (Days)</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#27ae60' }}>{Math.ceil(Math.max(...violationData.map(v => v.relativeTimeMinutes)) / 1440)}</p>
+              <h4>Latest Violation (Days)</h4>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#27ae60' }}>{Math.ceil(Math.max(0, ...violationData.map(v => v.relativeTimeMinutes)) / 1440)}</p>
             </div>
           </div>
         </div>
@@ -301,18 +380,23 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #dee2e6' }}>Constraint</th>
+                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #dee2e6' }}>Time Window</th>
                   <th style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #dee2e6' }}>Violations</th>
                 </tr>
               </thead>
               <tbody>
-                {timeConstraints.map(constraint => (
-                  <tr key={constraint.id}>
-                    <td style={{ padding: 8, borderBottom: '1px solid #e9ecef' }}>{constraint.id}</td>
-                    <td style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #e9ecef' }}>
-                      {constraint.violationCount}
-                    </td>
-                  </tr>
-                ))}
+                {timeConstraints.map(constraint => {
+                  const { base, time } = parseTimeConstraint(constraint.id);
+                  return (
+                    <tr key={constraint.id}>
+                      <td style={{ padding: 8, borderBottom: '1px solid #e9ecef' }}>{base}</td>
+                      <td style={{ padding: 8, borderBottom: '1px solid #e9ecef' }}>{time}</td>
+                      <td style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #e9ecef' }}>
+                        {constraint.violationCount}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -324,6 +408,28 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
         <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: 12 }}>
           Histogram of trace durations, split by conformance.
         </div>
+        <div className="binning-controls">
+          <div className="control-group">
+            <label>Time Unit:</label>
+            <select value={timeUnit} onChange={e => setTimeUnit(e.target.value as any)}>
+              <option value="days">Days</option>
+              <option value="hours">Hours</option>
+              <option value="minutes">Minutes</option>
+            </select>
+          </div>
+          <div className="control-group">
+            <label>Min Duration ({timeUnit}):</label>
+            <input type="number" value={minDuration} onChange={e => setMinDuration(Number(e.target.value))} />
+          </div>
+          <div className="control-group">
+            <label>Max Duration ({timeUnit}):</label>
+            <input type="number" value={maxDuration} onChange={e => setMaxDuration(Number(e.target.value))} />
+          </div>
+          <div className="control-group">
+            <label>Bin Size ({timeUnit}):</label>
+            <input type="number" value={binSize} onChange={e => setBinSize(Number(e.target.value))} />
+          </div>
+        </div>
         <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
           {traceDurationData.length === 0 ? (
             <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
@@ -334,7 +440,7 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
               <BarChart data={traceDurationData} margin={{ top: 20, right: 30, left: 10, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="dayLabel" angle={-20} textAnchor="end">
-                  <Label value="Trace Duration (days)" offset={20} position="bottom" />
+                  <Label value={`Trace Duration (${timeUnit})`} offset={20} position="bottom" />
                 </XAxis>
                 <YAxis allowDecimals={false} label={{ value: 'Number of Traces', angle: -90, position: 'insideLeft', offset: 10 }} />
                 <Tooltip formatter={(value: any, name: string) => [value, name === 'conformant' ? 'Conformant' : 'Non-conformant']} />
@@ -351,6 +457,25 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
         <h3 style={{ marginBottom: 4 }}>Violation Timing Heatmap</h3>
         <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: 12 }}>
           When violations occur, by constraint and time bin.
+        </div>
+        <div className="binning-controls" style={{ justifyContent: 'flex-end', background: 'none', padding: '0 0 1rem 0' }}>
+            <div className="control-group">
+                <label>Time Unit:</label>
+                <select value={heatmapTimeUnit} onChange={e => setHeatmapTimeUnit(e.target.value as any)}>
+                    <option value="days">Days</option>
+                    <option value="hours">Hours</option>
+                    <option value="minutes">Minutes</option>
+                </select>
+            </div>
+            <div className="control-group">
+                <label>Bin Size ({heatmapTimeUnit}):</label>
+                <input
+                    type="number"
+                    value={heatmapBinSize}
+                    onChange={e => setHeatmapBinSize(Number(e.target.value))}
+                    min="1"
+                />
+            </div>
         </div>
         <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
           {heatmapData.cells?.length === 0 ? (
@@ -423,7 +548,8 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
               {Array.from({ length: heatmapData.timeBins }, (_, i) => {
                 const isLastBin = i === heatmapData.timeBins - 1;
                 const hasOverflow = heatmapData.maxTimeMinutes > heatmapData.timeBins * heatmapData.binSizeMinutes;
-                const label = isLastBin && hasOverflow ? `${i}+` : `${i + 1}`;
+                const binStart = Math.floor((i * heatmapData.binSizeMinutes) / (heatmapData.binUnitConversion || 1));
+                const label = isLastBin && hasOverflow ? `${binStart}+` : `${binStart}`;
                 
                 return (
                   <div key={i} style={{
@@ -462,7 +588,7 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
                 justifyContent: 'center',
                 height: '100%'
               }}>
-                Trays Duration (days)
+                Time Since Trace Start ({heatmapData.timeUnit})
               </div>
               
               {/* Background for bottom left corner */}
@@ -582,4 +708,4 @@ ${event.hasViolation ? '⚠️ Has Violation' : '✓ Normal'}`}
   );
 };
 
-export default TimeView; 
+export default TimeView;

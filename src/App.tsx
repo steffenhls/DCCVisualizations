@@ -140,10 +140,10 @@ const App: React.FC = () => {
   return (
     <div className="app">
       {currentStep === 0 && (
-        <div className="app-header">
-          <h1>Declarative Conformance Analysis</h1>
-          <p>Upload your files, tag constraints, and analyze process conformance with DECLARE constraints</p>
-        </div>
+      <div className="app-header">
+        <h1>Declarative Conformance Analysis</h1>
+        <p>Upload your files, tag constraints, and analyze process conformance with DECLARE constraints</p>
+      </div>
       )}
 
       <div className="app-progress">
