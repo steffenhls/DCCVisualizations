@@ -78,6 +78,7 @@ export interface DashboardConstraint {
   fulfilmentCount: number;
   violationRate: number;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  isTimeConstraint?: boolean;
   tag: {
     priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     quality: boolean;

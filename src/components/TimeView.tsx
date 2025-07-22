@@ -256,6 +256,11 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
     };
   }, [traces, violationData]);
 
+  const timeConstraints = useMemo(() => 
+    constraints.filter(c => c.isTimeConstraint),
+    [constraints]
+  );
+
   return (
     <div>
       <div style={{ marginBottom: '2rem' }}>
@@ -284,6 +289,35 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
           </div>
         </div>
       </div>
+
+      {timeConstraints.length > 0 && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ marginBottom: 4 }}>Time-Related Constraints Summary</h3>
+          <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: 12 }}>
+            Violations for constraints with time windows.
+          </div>
+          <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #dee2e6' }}>Constraint</th>
+                  <th style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #dee2e6' }}>Violations</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timeConstraints.map(constraint => (
+                  <tr key={constraint.id}>
+                    <td style={{ padding: 8, borderBottom: '1px solid #e9ecef' }}>{constraint.id}</td>
+                    <td style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #e9ecef' }}>
+                      {constraint.violationCount}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: '2rem' }}>
         <h3 style={{ marginBottom: 4 }}>Trace Duration Distribution</h3>
@@ -318,13 +352,13 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
         <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: 12 }}>
           When violations occur, by constraint and time bin.
         </div>
-        <div style={{ height: 720, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
+        <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
           {heatmapData.cells?.length === 0 ? (
             <div style={{ height: 560, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
               No violation timing data available.
             </div>
           ) : (
-            <div style={{ width: '100%', height: 480, position: 'relative', display: 'grid',
+            <div style={{ width: '100%', position: 'relative', display: 'grid',
               gridTemplateColumns: `170px repeat(${heatmapData.timeBins}, 1fr)`,
               gridTemplateRows: `repeat(${Array.from(new Set(violationData.map(v => v.constraintId))).length}, 1fr) 28px 32px`,
               background: '#e9ecef', borderRadius: 8, marginTop: 24 }}>

@@ -788,7 +788,8 @@ const ConstraintsView: React.FC<{
     minRate: '',
     maxRate: '',
     hasViolations: false,
-    group: ''
+    group: '',
+    isTimeConstraint: false
   });
   const [constraintSort, setConstraintSort] = useState({
     field: 'id' as 'id' | 'violationCount' | 'fulfilmentCount' | 'violationRate' | 'priority',
@@ -870,6 +871,11 @@ const ConstraintsView: React.FC<{
       
       // Violations filter
       if (constraintFilter.hasViolations && constraint.violationCount === 0) {
+        return false;
+      }
+      
+      // Time-related filter
+      if (constraintFilter.isTimeConstraint && !constraint.isTimeConstraint) {
         return false;
       }
       
@@ -1138,6 +1144,20 @@ const ConstraintsView: React.FC<{
           </label>
         </div>
 
+        <div className="filter-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={constraintFilter.isTimeConstraint}
+              onChange={(e) => setConstraintFilter({
+                ...constraintFilter,
+                isTimeConstraint: e.target.checked
+              })}
+            />
+            Time-Related Only
+          </label>
+        </div>
+
         {/* Show Traces for Visible Constraints Button */}
         <div className="filter-group">
           <button 
@@ -1223,6 +1243,12 @@ const ConstraintsView: React.FC<{
                   <strong>Group:</strong> {constraint.tag.group}
                 </div>
               )}
+              {constraint.isTimeConstraint && (
+                  <span className="category time">
+                    <i className="fas fa-clock" style={{ marginRight: 4 }}></i>
+                    Time
+                  </span>
+                )}
               <div className="constraint-stats">
                 <div className="stat">
                   <span className="stat-label">Violations:</span>
@@ -1237,19 +1263,17 @@ const ConstraintsView: React.FC<{
                   <span className="stat-value">{(constraint.violationRate * 100).toFixed(1)}%</span>
                 </div>
               </div>
-              {constraint.tag && (
-                  <div className="tag-categories">
-                    {constraint.tag.quality && (
-                      <span className="category quality">Quality</span>
-                    )}
-                    {constraint.tag.efficiency && (
-                      <span className="category efficiency">Efficiency</span>
-                    )}
-                    {constraint.tag.compliance && (
-                      <span className="category compliance">Compliance</span>
-                    )}
-                </div>
-              )}
+              <div className="tag-categories">
+                {constraint.tag?.quality && (
+                  <span className="category quality">Quality</span>
+                )}
+                {constraint.tag?.efficiency && (
+                  <span className="category efficiency">Efficiency</span>
+                )}
+                {constraint.tag?.compliance && (
+                  <span className="category compliance">Compliance</span>
+                )}
+              </div>
             </div>
           </div>
         ))}

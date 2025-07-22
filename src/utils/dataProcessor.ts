@@ -47,17 +47,42 @@ function mapTemplateName(templateName: string): string {
 
 // Map constraint ID from CSV format to DECLARE model format
 function mapConstraintIdFromCsv(csvId: string): string {
-  // Match template name and everything inside the first [...] (including commas)
-  const match = csvId.match(/^([^:]+):\s*\[([\s\S]+?)\](?:\[\])*$/);
-  if (match) {
-    const templateName = match[1].trim();
-    let activities = match[2].replace(/\]\s*,\s*\[/g, ', '); // merge [A], [B] to A, B
-    // Remove any stray brackets
-    activities = activities.replace(/[\[\]]/g, '');
-    const displayTemplate = mapTemplateName(templateName);
-    return `${displayTemplate}[${activities}]`;
+  const colonIndex = csvId.indexOf(':');
+  if (colonIndex === -1) {
+    return normalizeConstraintId(csvId); // handle cases without colon
   }
-  return normalizeConstraintId(csvId);
+
+  const templateName = csvId.substring(0, colonIndex).trim();
+  const restWithBrackets = csvId.substring(colonIndex + 1).trim();
+  
+  // Join bracketed parts like `[A], [B]` into `[A][B]` to simplify parsing
+  const rest = restWithBrackets.replace(/\]\s*,\s*\[/g, '][');
+
+  const displayTemplate = mapTemplateName(templateName);
+
+  const bracketMatches = Array.from(rest.matchAll(/\[(.*?)\]/g));
+  const bracketContents = bracketMatches.map(m => m[1].trim());
+
+  if (bracketContents.length === 0) {
+    // Fallback for simple formats
+    return `${displayTemplate}[${rest.replace(/[\[\]]/g, '')}]`;
+  }
+
+  const nonEmptyContents = bracketContents.filter(c => c.length > 0);
+
+  let timeInfo = '';
+  let activities = [...nonEmptyContents];
+
+  if (nonEmptyContents.length > 1) { // Need at least one activity and time
+    const lastBit = nonEmptyContents[nonEmptyContents.length - 1];
+    // Check if last part is a time window e.g. 0,60,m
+    if (lastBit.match(/^\d+,\s*\d+,\s*\w+$/)) {
+      timeInfo = `[${lastBit}]`;
+      activities = nonEmptyContents.slice(0, -1);
+    }
+  }
+  
+  return `${displayTemplate}[${activities.join(', ')}]${timeInfo}`;
 }
 
 // Build constraint-level grouping and statistics from traceConstraintMap
@@ -119,22 +144,24 @@ export class DataProcessor {
     for (const line of lines) {
       const trimmedLine = line.trim();
       if (trimmedLine && !trimmedLine.startsWith('//') && !trimmedLine.startsWith('#')) {
-        // Handle DECLARE format with | separators
+        let constraintString = trimmedLine;
+        let timeInfo = '';
+
+        // Handle DECLARE format with | separators for time info
         if (trimmedLine.includes('|')) {
-          const parts = trimmedLine.split('|').map(part => part.trim()).filter(Boolean);
-          if (parts.length > 0) {
-            const constraintString = parts[0];
-            const constraint = parseDeclareConstraint(constraintString);
-            if (constraint) {
-              constraints.push(constraint);
-            }
+          const parts = trimmedLine.split('|').map(part => part.trim());
+          constraintString = parts[0];
+          
+          if (parts.length > 3 && parts[3]) {
+            timeInfo = `[${parts[3]}]`;
           }
-        } else {
-          // Handle simple constraint format
-          const constraint = parseDeclareConstraint(trimmedLine);
-          if (constraint) {
-            constraints.push(constraint);
-          }
+        }
+        
+        const constraint = parseDeclareConstraint(constraintString);
+        if (constraint) {
+          // Append time info to ID if it exists
+          constraint.id = `${constraint.id}${timeInfo}`;
+          constraints.push(constraint);
         }
       }
     }
@@ -575,6 +602,7 @@ export class DataProcessor {
           fulfilmentCount: totalFulfilments,
           violationRate: violationRate,
           severity: severity,
+          isTimeConstraint: constraint.id.includes(']['),
           tag: taggedConstraint?.tag || {
             priority: 'MEDIUM',
             quality: false,
@@ -598,6 +626,7 @@ export class DataProcessor {
           fulfilmentCount: 0,
           violationRate: 0,
           severity: 'LOW' as const,
+          isTimeConstraint: constraint.id.includes(']['),
           tag: taggedConstraint?.tag || {
           priority: 'MEDIUM',
           quality: false,
