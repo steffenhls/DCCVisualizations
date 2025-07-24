@@ -1,48 +1,80 @@
-# Getting Started with Create React App
+# Declarative Conformance Checking Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project is an interactive web application for **declarative conformance checking**—a modern approach to analyzing how real-world process executions (event logs) comply with flexible, rule-based process models (DECLARE). The app empowers users to upload, tag, and analyze declarative process models and their conformance results, providing deep insights into process quality, compliance, and efficiency.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## What is Declarative Conformance Checking?
 
-### `npm start`
+Declarative conformance checking is a process mining technique that evaluates how well observed behavior (event logs) aligns with **declarative process models**. Unlike rigid, flowchart-like models, declarative models (such as those in the DECLARE language) specify **rules and constraints** (e.g., “If A happens, B must eventually follow”) rather than strict sequences. This approach is ideal for flexible, knowledge-intensive domains.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+The app supports:
+- **Uploading DECLARE models** (rules/constraints in `.decl` files)
+- **Uploading conformance analysis results** (CSV, XES, etc.)
+- **Visualizing constraints and their fulfillment/violation statistics**
+- **Tagging constraints** by business relevance (quality, efficiency, compliance, priority)
+- **Exploring violations, fulfillments, and process variants interactively**
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+---
 
-### `npm test`
+## Core Workflow
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. **Upload Files**
+   - DECLARE model (`.decl`)
+   - Analysis results (overview/detail CSVs, event logs in `.xes`)
+2. **Constraint Tagging**
+   - Assign business tags (priority, quality, efficiency, compliance) to each constraint
+   - Group constraints for focused analysis
+3. **Analysis Dashboard**
+   - Visualize the process model and constraints
+   - Explore statistics: activations, fulfillments, violations, violation rates
+   - Filter and sort constraints by tags, priority, or performance
+   - Drill down into traces, variants, and co-violation patterns
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Key Features
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- **Model-Driven Visualization:** Interactive graph of DECLARE constraints using Cytoscape and ReactFlow.
+- **Rich Tagging:** Tag constraints with business dimensions and priorities for targeted analysis.
+- **Comprehensive Analysis:** View detailed statistics for each constraint and trace.
+- **Flexible Filtering:** Filter constraints and traces by tags, violation rates, or business groupings.
+- **User-Centric Workflow:** Step-by-step wizard guides users from file upload to deep analysis.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## File Types Supported
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+- **DECLARE Model:** `.decl` (constraint definitions)
+- **Analysis Overview:** `.csv` (constraint-level statistics)
+- **Analysis Detail:** `.csv` (trace-constraint mapping)
+- **Event Log:** `.xes` (process execution data)
+- **Aligned Log:** `.xes` (optional, for advanced alignment analysis)
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## Getting Started
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+1. `cd frontend`
+2. `npm install`
+3. `npm start`
+4. Open [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Technologies
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-# DCCVisualizations
-# DCCVisualizations
+- **React** (UI)
+- **Cytoscape.js** & **ReactFlow** (graph visualization)
+- **Recharts** (charts)
+- **Papaparse** (CSV parsing)
+- **fast-xml-parser** (XES/XML parsing)
+
+---
+
+## The Big Idea
+
+This project bridges the gap between **business rules** and **real-world process execution**. By making declarative conformance checking accessible and visual, it enables organizations to:
+- Detect compliance and efficiency issues
+- Prioritize improvements based on business impact
+- Foster transparency in flexible, knowledge-driven processes 
