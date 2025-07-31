@@ -13,6 +13,8 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "cytoscape": "^3.32.1",
+    "cytoscape-cose-bilkent": "^4.1.0",
+    "cytoscape-klay": "^3.1.4",
     "diff-match-patch": "^1.0.5",
     "fast-xml-parser": "^5.2.5",
     "papaparse": "^5.5.3",

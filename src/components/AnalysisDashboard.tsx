@@ -14,6 +14,7 @@ import TimeView from './TimeView';
 import ProcessModelView from './ProcessModelView';
 import ConstraintInterdependencyView from './ConstraintInterdependencyView';
 import './AnalysisDashboard.css';
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Label, ResponsiveContainer } from 'recharts';
 
 interface AnalysisDashboardProps {
   uploadedFiles: any;
@@ -39,6 +40,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [traceSort, setTraceSort] = useState<TraceSort>({ field: 'caseId', direction: 'asc' });
   const [showTraceDetail, setShowTraceDetail] = useState(false);
   const [initialConstraintFilter, setInitialConstraintFilter] = useState<string | null>(null);
+  const [alignmentTab, setAlignmentTab] = useState<'table' | 'graph'>('table');
 
   // Process uploaded files
   useEffect(() => {
@@ -407,6 +409,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             <OverviewView 
               overview={overview} 
               modelVisualization={modelVisualization} 
+              traces={traces}
               onConstraintClick={handleConstraintClick}
               onNavigateToTraces={handleNavigateToTraces}
               onNavigateToConstraints={handleNavigateToConstraints}
@@ -449,6 +452,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             <VariantsView
               traces={traces}
               processedConstraints={processedConstraints}
+              modelVisualization={modelVisualization}
               setSelectedTrace={setSelectedTrace}
               setShowTraceDetail={setShowTraceDetail}
               onNavigateToTracesWithSequenceFilter={handleNavigateToTracesWithSequenceFilter}
@@ -494,6 +498,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 const OverviewView: React.FC<{
   overview: DashboardOverview;
   modelVisualization: ModelVisualization | null;
+  traces: DashboardTrace[];
   onConstraintClick?: (constraintId: string) => void;
   onNavigateToTraces?: () => void;
   onNavigateToConstraints?: () => void;
@@ -504,7 +509,7 @@ const OverviewView: React.FC<{
   onNavigateToConstraintsWithCriticalPriority?: () => void;
   onNavigateToConstraintsWithHighPriority?: () => void;
   onNavigateToVariants?: () => void;
-}> = ({ overview, modelVisualization, onConstraintClick, onNavigateToTraces, onNavigateToConstraints, onNavigateToTracesWithFitnessSort, onNavigateToConstraintsWithCompliance, onNavigateToConstraintsWithQuality, onNavigateToConstraintsWithEfficiency, onNavigateToConstraintsWithCriticalPriority, onNavigateToConstraintsWithHighPriority, onNavigateToVariants }) => {
+}> = ({ overview, modelVisualization, traces, onConstraintClick, onNavigateToTraces, onNavigateToConstraints, onNavigateToTracesWithFitnessSort, onNavigateToConstraintsWithCompliance, onNavigateToConstraintsWithQuality, onNavigateToConstraintsWithEfficiency, onNavigateToConstraintsWithCriticalPriority, onNavigateToConstraintsWithHighPriority, onNavigateToVariants }) => {
   
   // Animated counter states
   const [animatedValues, setAnimatedValues] = useState({
@@ -771,6 +776,82 @@ const OverviewView: React.FC<{
         >
           <h3>High Priority Violations</h3>
           <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.highPriorityViolations}</div>
+        </div>
+      </div>
+      
+      {/* Fitness Distribution Chart */}
+      <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+        <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>Fitness Distribution</h3>
+        <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: '1rem' }}>
+          Distribution of trace fitness scores across all traces.
+        </div>
+        <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
+          {traces.length === 0 ? (
+            <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+              No trace data available for fitness distribution.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={360}>
+              <BarChart data={(() => {
+                // Create fitness distribution bins
+                const bins: { [key: string]: number } = {
+                  '0.0-0.1': 0,
+                  '0.1-0.2': 0,
+                  '0.2-0.3': 0,
+                  '0.3-0.4': 0,
+                  '0.4-0.5': 0,
+                  '0.5-0.6': 0,
+                  '0.6-0.7': 0,
+                  '0.7-0.8': 0,
+                  '0.8-0.9': 0,
+                  '0.9-1.0': 0
+                };
+                
+                traces.forEach(trace => {
+                  const fitness = trace.fitness;
+                  if (fitness >= 0.0 && fitness < 0.1) bins['0.0-0.1']++;
+                  else if (fitness >= 0.1 && fitness < 0.2) bins['0.1-0.2']++;
+                  else if (fitness >= 0.2 && fitness < 0.3) bins['0.2-0.3']++;
+                  else if (fitness >= 0.3 && fitness < 0.4) bins['0.3-0.4']++;
+                  else if (fitness >= 0.4 && fitness < 0.5) bins['0.4-0.5']++;
+                  else if (fitness >= 0.5 && fitness < 0.6) bins['0.5-0.6']++;
+                  else if (fitness >= 0.6 && fitness < 0.7) bins['0.6-0.7']++;
+                  else if (fitness >= 0.7 && fitness < 0.8) bins['0.7-0.8']++;
+                  else if (fitness >= 0.8 && fitness < 0.9) bins['0.8-0.9']++;
+                  else if (fitness >= 0.9 && fitness <= 1.0) bins['0.9-1.0']++;
+                });
+                
+                return Object.entries(bins).map(([range, count]) => ({
+                  range,
+                  count,
+                  percentage: (count / traces.length) * 100
+                }));
+              })()} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="range" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={60}
+                  tick={{ fontSize: 12 }}
+                >
+                  <Label value="Fitness Range" offset={20} position="bottom" />
+                </XAxis>
+                <YAxis 
+                  allowDecimals={false}
+                  label={{ value: 'Number of Traces', angle: -90, position: 'insideLeft'}}
+                />
+                <Tooltip 
+                  formatter={(value: any, name: string) => [
+                    `${value} traces (${((value / traces.length) * 100).toFixed(1)}%)`, 
+                    'Count'
+                  ]}
+                  labelFormatter={(label) => `Fitness: ${label}`}
+                />
+                <Bar dataKey="count" fill="#667eea" name="Trace Count" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>
@@ -1548,10 +1629,11 @@ const TracesView: React.FC<{
 const VariantsView: React.FC<{
   traces: DashboardTrace[];
   processedConstraints: DashboardConstraint[];
+  modelVisualization: ModelVisualization | null;
   setSelectedTrace: React.Dispatch<React.SetStateAction<DashboardTrace | null>>;
   setShowTraceDetail: React.Dispatch<React.SetStateAction<boolean>>;
   onNavigateToTracesWithSequenceFilter: (sequence: string) => void;
-}> = ({ traces, processedConstraints, setSelectedTrace, setShowTraceDetail, onNavigateToTracesWithSequenceFilter }) => {
+}> = ({ traces, processedConstraints, modelVisualization, setSelectedTrace, setShowTraceDetail, onNavigateToTracesWithSequenceFilter }) => {
   const [variantFilter, setVariantFilter] = useState({
     minLength: '',
     maxLength: '',
@@ -1561,6 +1643,12 @@ const VariantsView: React.FC<{
     hasDeletions: false,
     constraintTypes: [] as string[]
   });
+  const [showProcessFlow, setShowProcessFlow] = useState(false);
+  const [selectedVariantForFlow, setSelectedVariantForFlow] = useState<{
+    sequence: string;
+    traces: DashboardTrace[];
+  } | null>(null);
+  
   type VariantSortField = 'sequence' | 'count' | 'length' | 'fitness' | 'violations' | 'fulfilments' | 'alignmentCosts';
   const [variantSort, setVariantSort] = useState<{ field: VariantSortField; direction: 'asc' | 'desc' }>({
     field: 'length',
@@ -1815,7 +1903,7 @@ const VariantsView: React.FC<{
             onChange={(e) => {
               if (e.target.value) {
                 const newConstraintId = e.target.value;
-                const currentConstraints = variantFilter.constraintTypes;
+                const currentConstraints = variantFilter.constraintTypes || [];
                 if (!currentConstraints.includes(newConstraintId)) {
                   setVariantFilter({
                     ...variantFilter,
@@ -1825,7 +1913,6 @@ const VariantsView: React.FC<{
                 e.target.value = ''; // Reset selection
               }
             }}
-            style={{ width: 140, height: 36, borderRadius: 4, border: '1px solid #ccc', fontSize: '1rem', boxSizing: 'border-box' }}
           >
             <option value="">Select a constraint...</option>
             {processedConstraints
@@ -1879,7 +1966,7 @@ const VariantsView: React.FC<{
 
       {/* Results count */}
       <div className="variants-results">
-        <p>Showing {filteredAndSortedVariants().length} of {activitySequences.length} variants</p>
+        <p>Showing {filteredAndSortedVariants().length} variants</p>
       </div>
 
       {/* Variants Table */}
@@ -1953,21 +2040,98 @@ const VariantsView: React.FC<{
                 <td>{Math.round(variant.totalFulfilments / variant.traces.length)}</td>
                 <td>{Math.round((variant.totalInsertions + variant.totalDeletions) / variant.traces.length)}</td>
                 <td>
-                  <button
-                    className="detail-button"
-                    onClick={() => {
-                      // Navigate to traces view with sequence filtering
-                      onNavigateToTracesWithSequenceFilter(variant.sequence);
-                    }}
-                  >
-                    View Traces ({variant.traces.length})
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                    <button
+                      className="detail-button"
+                      onClick={() => {
+                        // Navigate to traces view with sequence filtering
+                        onNavigateToTracesWithSequenceFilter(variant.sequence);
+                      }}
+                    >
+                      View Traces
+                    </button>
+                    <button
+                      className="detail-button"
+                      style={{ backgroundColor: '#667eea', color: 'white' }}
+                      onClick={() => {
+                        setSelectedVariantForFlow({
+                          sequence: variant.sequence,
+                          traces: variant.traces
+                        });
+                        setShowProcessFlow(true);
+                      }}
+                    >
+                      Show Graph
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Process Flow Modal */}
+      {showProcessFlow && selectedVariantForFlow && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1000,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px',
+              borderBottom: '1px solid #e9ecef',
+              paddingBottom: '10px'
+            }}>
+              <h2>Process Flow for Variant ({selectedVariantForFlow.traces.length} traces)</h2>
+              <button
+                onClick={() => {
+                  setShowProcessFlow(false);
+                  setSelectedVariantForFlow(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <ProcessModelView 
+              modelVisualization={null}
+              traces={selectedVariantForFlow.traces}
+              onConstraintClick={(constraintId) => {
+                // Handle constraint click - could navigate to constraints view
+                console.log('Constraint clicked:', constraintId);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1977,6 +2141,7 @@ const TraceDetailModal: React.FC<{
   trace: DashboardTrace;
   onClose: () => void;
 }> = ({ trace, onClose }) => {
+  const [alignmentTab, setAlignmentTab] = useState<'table' | 'graph'>('table');
 
   // Dynamic programming algorithm to find optimal alignment
   const findOptimalAlignment = (seq1: string[], seq2: string[]) => {
@@ -2137,96 +2302,126 @@ const TraceDetailModal: React.FC<{
               <div className="alignment-description">
                 <p>This shows how the actual trace aligns with the process model. Differences indicate where the real process deviates from the expected model.</p>
               </div>
-              <div className="alignment-timeline">
-                <div className="alignment-header">
-                  <span className="header-type">Type</span>
-                  <span className="header-original">Original Event</span>
-                  <span className="header-aligned">Aligned to Model</span>
-                  <span className="header-difference">Difference</span>
-                </div>
-                {(() => {
-                  // Advanced alignment algorithm
-                  const originalEvents = trace.events;
-                  const alignedEvents = trace.alignedEvents;
-                  
-                  // Create activity sequences for comparison
-                  const originalSequence = originalEvents.map(e => e.activity);
-                  const alignedSequence = alignedEvents.map(e => e.alignedActivity || e.originalActivity || '');
-                  
-                  // Find the optimal alignment using dynamic programming
-                  const alignment = findOptimalAlignment(originalSequence, alignedSequence);
-                  
-                  // Convert alignment to display format
-                  const alignmentComparison = [];
-                  let originalIndex = 0;
-                  let alignedIndex = 0;
-                  
-                  for (const operation of alignment) {
-                    switch (operation.type) {
-                      case 'match':
-                        alignmentComparison.push({
-                          type: 'synchronous',
-                          originalActivity: originalEvents[originalIndex]?.activity || null,
-                          alignedActivity: alignedEvents[alignedIndex]?.alignedActivity || alignedEvents[alignedIndex]?.originalActivity || null,
-                          timestamp: originalEvents[originalIndex]?.timestamp || alignedEvents[alignedIndex]?.timestamp || null,
-                          hasDifference: false
-                        });
-                        originalIndex++;
-                        alignedIndex++;
-                        break;
-                      case 'insert':
-                        alignmentComparison.push({
-                          type: 'insertion',
-                          originalActivity: null,
-                          alignedActivity: alignedEvents[alignedIndex]?.alignedActivity || alignedEvents[alignedIndex]?.originalActivity || null,
-                          timestamp: alignedEvents[alignedIndex]?.timestamp || null,
-                          hasDifference: true
-                        });
-                        alignedIndex++;
-                        break;
-                      case 'delete':
-                        alignmentComparison.push({
-                          type: 'deletion',
-                          originalActivity: originalEvents[originalIndex]?.activity || null,
-                          alignedActivity: null,
-                          timestamp: originalEvents[originalIndex]?.timestamp || null,
-                          hasDifference: true
-                        });
-                        originalIndex++;
-                        break;
-                    }
-                  }
-                  
-                  return alignmentComparison.map((comparison, index) => {
-                    const isInsertion = comparison.type === 'insertion';
-                    const isDeletion = comparison.type === 'deletion';
-                    const isSynchronous = comparison.type === 'synchronous';
-                    
-                    return (
-                      <div key={index} className={`alignment-item ${comparison.type} ${comparison.hasDifference ? 'has-difference' : ''}`}>
-                        <span className={`alignment-type ${comparison.type}`}>
-                          {isInsertion ? '➕ Model' :
-                           isDeletion ? '➖ Log' :
-                           isSynchronous ? '✓ Sync' : comparison.type}
-                        </span>
-                        <span className={`alignment-original ${isDeletion ? 'deleted' : ''}`}>
-                          {comparison.originalActivity || '-'}
-                        </span>
-                        <span className={`alignment-aligned ${isInsertion ? 'inserted' : ''}`}>
-                          {comparison.alignedActivity || '-'}
-                        </span>
-                        <span className="alignment-difference">
-                          {comparison.hasDifference ? (
-                            isInsertion ? 'Model expects this event' :
-                            isDeletion ? 'Log has unexpected event' :
-                            'No difference'
-                          ) : 'No difference'}
-                        </span>
-                      </div>
-                    );
-                  });
-                })()}
+              
+              {/* Alignment Analysis Tabs */}
+              <div className="alignment-tabs">
+                <button
+                  className={`tab-button ${alignmentTab === 'table' ? 'active' : ''}`}
+                  onClick={() => setAlignmentTab('table')}
+                >
+                  Log & Model Moves
+                </button>
+                <button
+                  className={`tab-button ${alignmentTab === 'graph' ? 'active' : ''}`}
+                  onClick={() => setAlignmentTab('graph')}
+                >
+                  Process Flow Graph
+                </button>
               </div>
+
+              {alignmentTab === 'table' && (
+                <div className="alignment-timeline">
+                  <div className="alignment-header">
+                    <span className="header-type">Type</span>
+                    <span className="header-original">Original Event</span>
+                    <span className="header-aligned">Aligned to Model</span>
+                    <span className="header-difference">Difference</span>
+                  </div>
+                  {(() => {
+                    // Advanced alignment algorithm
+                    const originalEvents = trace.events;
+                    const alignedEvents = trace.alignedEvents;
+                    
+                    // Create activity sequences for comparison
+                    const originalSequence = originalEvents.map(e => e.activity);
+                    const alignedSequence = alignedEvents.map(e => e.alignedActivity || e.originalActivity || '');
+                    
+                    // Find the optimal alignment using dynamic programming
+                    const alignment = findOptimalAlignment(originalSequence, alignedSequence);
+                    
+                    // Convert alignment to display format
+                    const alignmentComparison = [];
+                    let originalIndex = 0;
+                    let alignedIndex = 0;
+                    
+                    for (const operation of alignment) {
+                      switch (operation.type) {
+                        case 'match':
+                          alignmentComparison.push({
+                            type: 'synchronous',
+                            originalActivity: originalEvents[originalIndex]?.activity || null,
+                            alignedActivity: alignedEvents[alignedIndex]?.alignedActivity || alignedEvents[alignedIndex]?.originalActivity || null,
+                            timestamp: originalEvents[originalIndex]?.timestamp || alignedEvents[alignedIndex]?.timestamp || null,
+                            hasDifference: false
+                          });
+                          originalIndex++;
+                          alignedIndex++;
+                          break;
+                        case 'insert':
+                          alignmentComparison.push({
+                            type: 'insertion',
+                            originalActivity: null,
+                            alignedActivity: alignedEvents[alignedIndex]?.alignedActivity || alignedEvents[alignedIndex]?.originalActivity || null,
+                            timestamp: alignedEvents[alignedIndex]?.timestamp || null,
+                            hasDifference: true
+                          });
+                          alignedIndex++;
+                          break;
+                        case 'delete':
+                          alignmentComparison.push({
+                            type: 'deletion',
+                            originalActivity: originalEvents[originalIndex]?.activity || null,
+                            alignedActivity: null,
+                            timestamp: originalEvents[originalIndex]?.timestamp || null,
+                            hasDifference: true
+                          });
+                          originalIndex++;
+                          break;
+                      }
+                    }
+                    
+                    return alignmentComparison.map((comparison, index) => {
+                      const isInsertion = comparison.type === 'insertion';
+                      const isDeletion = comparison.type === 'deletion';
+                      const isSynchronous = comparison.type === 'synchronous';
+                      
+                      return (
+                        <div key={index} className={`alignment-item ${comparison.type} ${comparison.hasDifference ? 'has-difference' : ''}`}>
+                          <span className={`alignment-type ${comparison.type}`}>
+                            {isInsertion ? '➕ Model' :
+                             isDeletion ? '➖ Log' :
+                             isSynchronous ? '✓ Sync' : comparison.type}
+                          </span>
+                          <span className={`alignment-original ${isDeletion ? 'deleted' : ''}`}>
+                            {comparison.originalActivity || '-'}
+                          </span>
+                          <span className={`alignment-aligned ${isInsertion ? 'inserted' : ''}`}>
+                            {comparison.alignedActivity || '-'}
+                          </span>
+                          <span className="alignment-difference">
+                            {comparison.hasDifference ? (
+                              isInsertion ? 'Model expects this event' :
+                              isDeletion ? 'Log has unexpected event' :
+                              'No difference'
+                            ) : 'No difference'}
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+
+              {alignmentTab === 'graph' && (
+                <div className="alignment-graph">
+                  <ProcessModelView 
+                    modelVisualization={null}
+                    traces={[trace]}
+                    onConstraintClick={() => {}}
+                  />
+                </div>
+              )}
+
               <div className="alignment-summary">
                 <div className="summary-item">
                   <span className="summary-label">Synchronous Events:</span>
@@ -2256,35 +2451,6 @@ const TraceDetailModal: React.FC<{
             </div>
           )}
 
-          <div className="trace-events">
-            <h3>Events</h3>
-            {trace.events.length > 0 ? (
-            <div className="events-timeline">
-              {trace.events.map((event, index) => (
-                <div key={event.id} className="event-item">
-                  <span className="event-position">{index + 1}</span>
-                  <span className="event-activity">{event.activity}</span>
-                  <span className="event-timestamp">{new Date(event.timestamp).toLocaleString()}</span>
-                  {event.resource && (
-                    <span className="event-resource">{event.resource}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            ) : (
-              <div style={{ padding: '1rem', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', color: '#6c757d' }}>
-                <p>No events found for this trace.</p>
-                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                  This could be because:
-                </p>
-                <ul style={{ textAlign: 'left', display: 'inline-block', marginTop: '0.5rem' }}>
-                  <li>No event log file was uploaded</li>
-                  <li>The case ID doesn't match between event log and analysis files</li>
-                  <li>The event log file format is not supported</li>
-                </ul>
-            </div>
-          )}
-          </div>
         </div>
       </div>
     </div>

@@ -620,6 +620,19 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
                 {/* Background */}
                 <rect width="100%" height="100%" fill="#ffffff" />
                 
+                {/* Y-axis label */}
+                <text 
+                  x="4%" 
+                  y="50%" 
+                  textAnchor="middle" 
+                  fontSize="12" 
+                  fontWeight="bold"
+                  fill="#2c3e50"
+                  transform="rotate(-90, 2%, 50%)"
+                >
+                  Trace
+                </text>
+                
                 {/* Grid lines */}
                 {(() => {
                   const timeRange = dottedChartData.timeRange.end.getTime() - dottedChartData.timeRange.start.getTime();
