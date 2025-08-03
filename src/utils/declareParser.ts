@@ -161,6 +161,14 @@ const DECLARE_TEMPLATES: Record<string, any> = {
     visualRepresentation: 'A ↔ B',
     examples: ['CoExistence[A, B]', 'CoExistence[Register, Approve]'],
     helpText: 'Activities A and B must either both occur or both not occur in the case.'
+  },
+  'NotCoExistence': {
+    name: 'Not Co-Existence',
+    description: 'A and B cannot occur together',
+    formula: '¬(◇A ∧ ◇B)',
+    visualRepresentation: 'A ↮ B',
+    examples: ['Not Co-Existence[A, B]', 'Not Co-Existence[Release A, Release B]'],
+    helpText: 'Activities A and B cannot both occur in the same case.'
   }
 };
 
@@ -173,8 +181,8 @@ export function parseDeclareConstraint(constraintString: string): DeclareConstra
   const idCleaned = normalized.replace(/(\[\])*$/g, '');
   
   // Match pattern: TemplateName[Activity1, Activity2, ...] with optional | separators
-  // Updated regex to handle template names with spaces
-  const match = normalized.match(/^([A-Za-z0-9\s]+)\[([^\]]+)\]/);
+  // Updated regex to handle template names with spaces, hyphens, and other characters
+  const match = normalized.match(/^([^[]+)\[([^\]]+)\]/);
   
   if (!match) {
     return null;
@@ -223,6 +231,7 @@ function mapTemplateName(templateName: string): string {
     'Chain Precedence': 'ChainPrecedence',
     'Not Succession': 'NotSuccession',
     'Not Chain Succession': 'NotChainSuccession',
+    'Not Co-Existence': 'NotCoExistence',
     'Absence 2': 'Absence2',
     'Absence 3': 'Absence3',
     'Exactly 1': 'Exactly1'
@@ -276,6 +285,8 @@ function generateDynamicHelpText(template: any, activities: string[]): string {
       return `${activityNames[0]} and ${activityNames[1]} must occur immediately in sequence: ${activityNames[0]} must be immediately followed by ${activityNames[1]} and ${activityNames[1]} must be immediately preceded by ${activityNames[0]}.`;
     case 'Co-Existence':
       return `${activityNames[0]} and ${activityNames[1]} must either both occur or both not occur in the case.`;
+    case 'Not Co-Existence':
+      return `${activityNames[0]} and ${activityNames[1]} cannot both occur in the same case.`;
     default:
       return template.helpText;
   }

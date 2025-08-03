@@ -33,6 +33,8 @@ function mapTemplateName(templateName: string): string {
     'chain precedence': 'Chain Precedence',
     'not succession': 'Not Succession',
     'not chain succession': 'Not Chain Succession',
+    'not co-existence': 'Not Co-Existence',
+    'not coexistence': 'Not Co-Existence',
     'absence2': 'Absence2',
     'absence3': 'Absence3',
     'exactly1': 'Exactly1',
