@@ -238,13 +238,13 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
         <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: 12 }}>
           Distribution of events by activity and resource (only activities with violations).
         </div>
-        <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
+        <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
           {activityResourceHeatmap.activities.length === 0 || activityResourceHeatmap.resources.length === 0 ? (
-            <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
               No activity-resource data available.
             </div>
           ) : (
-            <div style={{ width: '100%', height: 360, position: 'relative', display: 'grid',
+            <div style={{ width: '100%', position: 'relative', display: 'grid',
               gridTemplateColumns: `110px repeat(${activityResourceHeatmap.resources.length}, 1fr)`,
               gridTemplateRows: `repeat(${activityResourceHeatmap.activities.length}, 1fr) 28px 32px`,
               background: '#e9ecef', borderRadius: 8 }}>
@@ -264,7 +264,8 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
                   borderRight: '1px solid #e9ecef',
                   borderBottom: '1px solid #e9ecef',
                   borderTopLeftRadius: i === 0 ? 8 : 0,
-                  borderBottomLeftRadius: i === activityResourceHeatmap.activities.length - 1 ? 8 : 0
+                  borderBottomLeftRadius: i === activityResourceHeatmap.activities.length - 1 ? 8 : 0,
+                  maxHeight: '40px'
                 }}>
                   {activity}
                 </div>
@@ -293,8 +294,8 @@ const ResourceView: React.FC<ResourceViewProps> = ({ traces, constraints }) => {
                         color: intensity > 0.5 ? 'white' : 'black',
                         fontWeight: 'bold',
                         cursor: 'pointer',
-                        aspectRatio: '1',
-                        minHeight: '30px'
+                        minHeight: '30px',
+                        maxHeight: '40px',
                       }}
                       title={`Activity: ${activityResourceHeatmap.activities[y]}\nResource: ${activityResourceHeatmap.resources[x]}\nCount: ${count}`}
                     >

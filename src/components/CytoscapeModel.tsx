@@ -129,11 +129,18 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
             source: constraint.source,
             target: constraint.target,
             label: `${constraint.constraint.type} ${label}`, // Include constraint type in label
-            color: '#666666',
+            color: '#666666', // Gray for all constraints
             thickness: thickness,
-            type: 'activity-edge',
+            type: (constraint.constraint.type === 'NotCoExistence' || 
+                   constraint.constraint.type === 'CoExistence' ||
+                   constraint.constraint.type === 'AlternateSuccession' ||
+                   constraint.constraint.type === 'ChainSuccession') ? 'bidirectional-edge' : 'activity-edge',
             constraintId: constraint.id,
-            constraintType: constraint.constraint.type // Store constraint type separately
+            constraintType: constraint.constraint.type, // Store constraint type separately
+            isBidirectional: (constraint.constraint.type === 'NotCoExistence' || 
+                           constraint.constraint.type === 'CoExistence' ||
+                           constraint.constraint.type === 'AlternateSuccession' ||
+                           constraint.constraint.type === 'ChainSuccession').toString()
           },
           group: 'edges' as const
         });
@@ -198,7 +205,31 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
               'target-arrow-color': 'data(color)',
               'target-arrow-shape': 'triangle',
               'arrow-scale': 1,
-              'curve-style': 'haystack',
+              'curve-style': 'bezier',
+              'label': 'data(label)',
+              'font-size': '11px',
+              'font-weight': 'bold',
+              'text-rotation': 'autorotate',
+              'text-margin-y': -15,
+              'text-background-color': 'white',
+              'text-background-opacity': 0.9,
+              'text-background-padding': '3px',
+              'text-border-color': '#666666',
+              'text-border-width': 1,
+              'text-border-opacity': 0.8,
+            }
+          },
+          {
+            selector: 'edge[type = "bidirectional-edge"]',
+            style: {
+              'width': 'data(thickness)',
+              'line-color': 'data(color)',
+              'target-arrow-color': 'data(color)',
+              'target-arrow-shape': 'triangle',
+              'source-arrow-color': 'data(color)',
+              'source-arrow-shape': 'triangle',
+              'arrow-scale': 1,
+              'curve-style': 'bezier',
               'label': 'data(label)',
               'font-size': '11px',
               'font-weight': 'bold',
