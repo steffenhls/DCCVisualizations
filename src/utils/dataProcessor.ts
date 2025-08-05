@@ -114,10 +114,14 @@ export function buildConstraintLevelDetail(traceConstraintMap: Map<string, Map<s
       const stats = constraintStatsMap.get(constraintId);
       let hasViolation = false;
       for (const type of resultTypes) {
-        if (type === 'fulfillment' || type === 'vac. fulfillment') {
+        // Parse detailed result type that includes activity information
+        const parts = type.split(':');
+        const baseResultType = parts[0]; // 'violation', 'fulfillment', etc.
+        
+        if (baseResultType === 'fulfillment' || baseResultType === 'vac. fulfillment') {
           stats.fulfilment++;
         }
-        else if (type === 'violation' || type === 'vac. violation') {
+        else if (baseResultType === 'violation' || baseResultType === 'vac. violation') {
           stats.violation++;
           hasViolation = true;
         }
@@ -240,11 +244,18 @@ export class DataProcessor {
     
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(';');
+      
       if (values.length >= 3) {
         const caseId = values[0];
         const csvConstraintId = values[1];
         const constraintId = mapConstraintIdFromCsv(csvConstraintId);
         const resultType = values[2];
+        const activityName = values.length >= 4 ? values[3] : '';
+        const activityIndex = values.length >= 5 ? values[4] : '';
+        
+        // Create a more detailed result type that includes activity information
+        const detailedResultType = activityName && activityIndex ? 
+          `${resultType}:${activityName}:${activityIndex}` : resultType;
         
         if (!traceConstraintMap.has(caseId)) {
           traceConstraintMap.set(caseId, new Map());
@@ -255,7 +266,7 @@ export class DataProcessor {
           constraintMap.set(constraintId, []);
         }
         
-        constraintMap.get(constraintId)!.push(resultType);
+        constraintMap.get(constraintId)!.push(detailedResultType);
       }
     }
     
@@ -662,7 +673,11 @@ export class DataProcessor {
         let constraintViolations = 0;
         
         resultTypes.forEach((resultType: string) => {
-          switch (resultType) {
+          // Parse detailed result type that includes activity information
+          const parts = resultType.split(':');
+          const baseResultType = parts[0]; // 'violation', 'fulfillment', etc.
+          
+          switch (baseResultType) {
             case 'fulfillment':
             case 'vac. fulfillment':
               fulfilments += 1;
