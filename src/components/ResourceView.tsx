@@ -44,41 +44,70 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
     // Extract violations from constraint details
     if (trace.constraintDetails) {
       trace.constraintDetails.forEach(detail => {
-        // Find violations in this constraint
-        const violationCount = detail.totalViolations;
+        const constraint = constraintMap.get(detail.constraintId);
+        if (!constraint) return;
         
-        if (violationCount > 0) {
-          const constraint = constraintMap.get(detail.constraintId);
-          if (!constraint) return;
+        // Process each result type to find actual violations
+        detail.resultTypes.forEach(resultType => {
+          // Parse detailed result type that includes activity information
+          const parts = resultType.split(':');
+          const baseResultType = parts[0]; // 'violation', 'fulfillment', etc.
+          const activityName = parts.length > 1 ? parts[1] : '';
+          const activityIndex = parts.length > 2 ? parseInt(parts[2]) : -1;
           
-          // Find events that match the constraint activities
-          const matchingEvents = sortedEvents.filter(event => 
-            constraint.activities.includes(event.activity)
-          );
-          
-          // For each violation, create a data point
-          // Note: We don't have exact violation timestamps, so we'll use the event timestamps
-          matchingEvents.forEach((event, index) => {
-            const eventTime = new Date(event.timestamp).getTime();
-            const relativeTimeMinutes = (eventTime - traceStartTime) / (1000 * 60);
-            
-            // Create violation data points
-            if (detail.totalViolations > 0) {
-              violationData.push({
-                traceId: trace.caseId,
-                constraintId: detail.constraintId,
-                constraintType: constraint.type,
-                violationType: 'violation',
-                timestamp: event.timestamp,
-                relativeTimeMinutes,
-                resource: event.resource,
-                activity: event.activity,
-                eventIndex: sortedEvents.findIndex(e => e.id === event.id),
-                severity: constraint.severity
+          // Only process violations
+          if (baseResultType === 'violation' || baseResultType === 'vac. violation') {
+            // If we have specific activity information, use it
+            if (activityName && activityIndex >= 0) {
+              // Find the specific event that violated the constraint
+              const violatingEvent = sortedEvents.find((event, index) => 
+                event.activity === activityName && index === (activityIndex - 1)
+              );
+              
+              if (violatingEvent) {
+                const eventTime = new Date(violatingEvent.timestamp).getTime();
+                const relativeTimeMinutes = (eventTime - traceStartTime) / (1000 * 60);
+                
+                violationData.push({
+                  traceId: trace.caseId,
+                  constraintId: detail.constraintId,
+                  constraintType: constraint.type,
+                  violationType: baseResultType as 'violation' | 'vac. violation',
+                  timestamp: violatingEvent.timestamp,
+                  relativeTimeMinutes,
+                  resource: violatingEvent.resource,
+                  activity: violatingEvent.activity,
+                  eventIndex: sortedEvents.findIndex(e => e.id === violatingEvent.id),
+                  severity: constraint.severity
+                });
+              }
+            } else {
+              // Fallback: if no specific activity info, use all matching events
+              // This should rarely happen with the updated parsing
+              const matchingEvents = sortedEvents.filter(event => 
+                constraint.activities.includes(event.activity)
+              );
+              
+              matchingEvents.forEach((event) => {
+                const eventTime = new Date(event.timestamp).getTime();
+                const relativeTimeMinutes = (eventTime - traceStartTime) / (1000 * 60);
+                
+                violationData.push({
+                  traceId: trace.caseId,
+                  constraintId: detail.constraintId,
+                  constraintType: constraint.type,
+                  violationType: baseResultType as 'violation' | 'vac. violation',
+                  timestamp: event.timestamp,
+                  relativeTimeMinutes,
+                  resource: event.resource,
+                  activity: event.activity,
+                  eventIndex: sortedEvents.findIndex(e => e.id === event.id),
+                  severity: constraint.severity
+                });
               });
             }
-          });
-        }
+          }
+        });
       });
     }
   });
