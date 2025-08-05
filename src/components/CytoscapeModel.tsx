@@ -77,7 +77,7 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
             height: 25,
             color: '#f39c12', // Yellow/orange for constraint rectangles
             type: 'constraint',
-            constraintId: constraint.id,
+            constraintId: constraint.constraint.id,
             support: `${support}%`,
             parentActivity: constraint.source,
             grabbable: false // Make constraint nodes non-movable
@@ -135,7 +135,7 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
                    constraint.constraint.type === 'CoExistence' ||
                    constraint.constraint.type === 'AlternateSuccession' ||
                    constraint.constraint.type === 'ChainSuccession') ? 'bidirectional-edge' : 'activity-edge',
-            constraintId: constraint.id,
+            constraintId: constraint.constraint.id,
             constraintType: constraint.constraint.type, // Store constraint type separately
             isBidirectional: (constraint.constraint.type === 'NotCoExistence' || 
                            constraint.constraint.type === 'CoExistence' ||
@@ -401,7 +401,6 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
                 const x = containerRect.left + position.x;
                 const y = containerRect.top + position.y;
                 
-                console.log('Setting tooltip:', { x, y, content });
                 setTooltip({
                   show: true,
                   x: x,
@@ -443,7 +442,6 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
                 const x = containerRect.left + position.x;
                 const y = containerRect.top + position.y;
                 
-                console.log('Setting tooltip:', { x, y, content });
                 setTooltip({
                   show: true,
                   x: x,

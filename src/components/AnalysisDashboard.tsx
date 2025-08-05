@@ -779,7 +779,7 @@ const OverviewView: React.FC<{
         </div>
       </div>
       
-      {/* Fitness Distribution Chart */}
+      {/* Fitness Distribution Chart 
       <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
         <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>Fitness Distribution</h3>
         <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: '1rem' }}>
@@ -853,7 +853,7 @@ const OverviewView: React.FC<{
             </ResponsiveContainer>
           )}
         </div>
-      </div>
+      </div>*/}
     </div>
   );
 };
