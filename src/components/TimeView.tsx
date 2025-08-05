@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { DashboardTrace, DashboardConstraint } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label, Legend } from 'recharts';
 import './TimeView.css';
+import { eventNames } from 'process';
 
 interface TimeViewProps {
   traces: DashboardTrace[];
@@ -61,8 +62,9 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
             // If we have specific activity information, use it
             if (activityName && activityIndex >= 0) {
               // Find the specific event that violated the constraint
+              console.log(sortedEvents, activityName, activityIndex)
               const violatingEvent = sortedEvents.find((event, index) => 
-                event.activity === activityName && index === activityIndex
+                event.activity === activityName && index === (activityIndex - 1)
               );
               
               if (violatingEvent) {
@@ -135,10 +137,10 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
   const [minDuration, setMinDuration] = useState(0);
   const [maxDuration, setMaxDuration] = useState(20);
   const [binSize, setBinSize] = useState(1);
-  const [timeUnit, setTimeUnit] = useState<'days' | 'hours' | 'minutes'>('days');
+  const [timeUnit, setTimeUnit] = useState<'days' | 'hours' | 'minutes'>('minutes');
 
   // Binning state for Heatmap
-  const [heatmapTimeUnit, setHeatmapTimeUnit] = useState<'days' | 'hours' | 'minutes'>('days');
+  const [heatmapTimeUnit, setHeatmapTimeUnit] = useState<'days' | 'hours' | 'minutes'>('minutes');
   const [heatmapBinSize, setHeatmapBinSize] = useState(1);
 
   // Extract comprehensive violation data
