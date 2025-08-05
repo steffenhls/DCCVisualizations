@@ -61,7 +61,7 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
             if (activityName && activityIndex >= 0) {
               // Find the specific event that violated the constraint
               const violatingEvent = sortedEvents.find((event, index) => 
-                event.activity === activityName && index === activityIndex
+                event.activity === activityName && index === (activityIndex - 1)
               );
               
               if (violatingEvent) {
