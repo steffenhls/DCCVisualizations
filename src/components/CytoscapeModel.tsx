@@ -418,7 +418,7 @@ const CytoscapeModel: React.FC<CytoscapeModelProps> = ({ modelVisualization, onC
             
             // Get constraint details
             const constraintId = node.data('constraintId');
-            const constraint = modelVisualization.constraints.find(c => c.id === constraintId);
+            const constraint = modelVisualization.constraints.find(c => c.constraint.id === constraintId);
             if (constraint) {
               const stats = constraint.constraint.statistics;
               const rate = constraint.constraint.violationRate * 100;
