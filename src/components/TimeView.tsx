@@ -7,6 +7,7 @@ import { eventNames } from 'process';
 interface TimeViewProps {
   traces: DashboardTrace[];
   constraints: DashboardConstraint[];
+  onNavigateToTraces?: (filter: { constraintId?: string; timeRange?: string; traceId?: string }) => void;
 }
 
 // Comprehensive violation data extraction
@@ -62,7 +63,6 @@ function extractViolationData(traces: DashboardTrace[], constraints: DashboardCo
             // If we have specific activity information, use it
             if (activityName && activityIndex >= 0) {
               // Find the specific event that violated the constraint
-              console.log(sortedEvents, activityName, activityIndex)
               const violatingEvent = sortedEvents.find((event, index) => 
                 event.activity === activityName && index === (activityIndex - 1)
               );
@@ -132,7 +132,7 @@ function parseTimeConstraint(constraintId: string): { base: string; time: string
 }
 
 // Time View Component
-const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
+const TimeView: React.FC<TimeViewProps> = ({ traces, constraints, onNavigateToTraces }) => {
   // Binning state for Trace Duration chart
   const [minDuration, setMinDuration] = useState(0);
   const [maxDuration, setMaxDuration] = useState(20);
@@ -489,7 +489,7 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
         <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: 12 }}>
           When violations occur, by constraint and time bin.
         </div>
-        <div className="binning-controls" style={{ justifyContent: 'flex-end', background: 'none', padding: '0 0 1rem 0' }}>
+        <div className="binning-controls">
             <div className="control-group">
                 <label>Time Unit:</label>
                 <select value={heatmapTimeUnit} onChange={e => setHeatmapTimeUnit(e.target.value as any)}>
@@ -569,6 +569,14 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
                       minHeight: '40px'
                     }}
                     title={`${cell.constraintId}: ${cell.violationCount} violations at ${cell.timeRange}`}
+                    onClick={() => {
+                      if (onNavigateToTraces) {
+                        onNavigateToTraces({
+                          constraintId: cell.constraintId,
+                          timeRange: cell.timeRange
+                        });
+                      }
+                    }}
                   >
                     {cell.violationCount > 0 ? cell.violationCount : ''}
                   </div>
@@ -717,6 +725,14 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
                               fill={event.hasViolation ? "#e74c3c" : "#3498db"}
                               stroke={event.hasViolation ? "#c0392b" : "#2980b9"}
                               strokeWidth="1"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => {
+                                if (onNavigateToTraces) {
+                                  onNavigateToTraces({
+                                    traceId: trace.traceId
+                                  });
+                                }
+                              }}
                             />
                             
                             {/* Tooltip data */}
@@ -725,7 +741,8 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints }) => {
 Activity: ${event.activity}
 Time: ${event.timestamp.toLocaleString()}
 Resource: ${event.resource || 'N/A'}
-${event.hasViolation ? '⚠️ Has Violation' : '✓ Normal'}`}
+${event.hasViolation ? '⚠️ Has Violation' : '✓ Normal'}
+Click to filter to this trace`}
                             </title>
                           </g>
                         );

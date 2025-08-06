@@ -187,6 +187,7 @@ export interface TraceFilter {
   hasDeletions?: boolean;
   constraintTypes?: string[];
   sequence?: string;
+  traceId?: string;
 }
 
 export interface TraceSort {

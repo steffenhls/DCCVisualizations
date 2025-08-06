@@ -8,13 +8,12 @@ import {
   TraceSort
 } from '../types';
 import { DataProcessor } from '../utils/dataProcessor';
-import CytoscapeModel from './CytoscapeModel';
 import ResourceView from './ResourceView';
 import TimeView from './TimeView';
 import ProcessModelView from './ProcessModelView';
 import ConstraintInterdependencyView from './ConstraintInterdependencyView';
 import './AnalysisDashboard.css';
-import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Label, ResponsiveContainer } from 'recharts';
+// import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Label, ResponsiveContainer } from 'recharts';
 
 interface AnalysisDashboardProps {
   uploadedFiles: any;
@@ -40,7 +39,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [traceSort, setTraceSort] = useState<TraceSort>({ field: 'caseId', direction: 'asc' });
   const [showTraceDetail, setShowTraceDetail] = useState(false);
   const [initialConstraintFilter, setInitialConstraintFilter] = useState<string | null>(null);
-  const [alignmentTab, setAlignmentTab] = useState<'table' | 'graph'>('table');
 
   // Process uploaded files
   useEffect(() => {
@@ -163,6 +161,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       if (traceFilter.hasFulfilments && trace.fulfilments === 0) return false;
       if (traceFilter.hasInsertions && trace.insertions === 0) return false;
       if (traceFilter.hasDeletions && trace.deletions === 0) return false;
+      if (traceFilter.traceId && trace.caseId !== traceFilter.traceId) return false;
       if (traceFilter.sequence) {
         // Filter by activity sequence
         const traceSequence = trace.events.map(e => e.activity).join(' → ');
@@ -321,6 +320,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     setActiveView('variants');
   }, []);
 
+  const handleNavigateToTracesFromHeatmap = useCallback((filter: { constraintId?: string; timeRange?: string; traceId?: string }) => {
+    // Navigate to traces view with constraint filtering
+    setTraceFilter({
+      ...traceFilter,
+      constraintTypes: filter.constraintId ? [filter.constraintId] : [],
+      traceId: filter.traceId
+    });
+    setActiveView('traces');
+  }, [traceFilter]);
+
   if (loading) {
     return (
       <div className="analysis-dashboard">
@@ -470,6 +479,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             <TimeView 
               traces={traces}
               constraints={processedConstraints}
+              onNavigateToTraces={handleNavigateToTracesFromHeatmap}
             />
           )}
 
