@@ -461,7 +461,7 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints, onNavigateToTr
             <input type="number" value={binSize} onChange={e => setBinSize(Number(e.target.value))} />
           </div>
         </div>
-        <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
+        <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16, overflowY: 'scroll' }}>
           {traceDurationData.length === 0 ? (
             <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
               No trace duration data available.
@@ -508,7 +508,7 @@ const TimeView: React.FC<TimeViewProps> = ({ traces, constraints, onNavigateToTr
                 />
             </div>
         </div>
-        <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
+        <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16, overflowY: 'scroll' }}>
           {heatmapData.cells?.length === 0 ? (
             <div style={{ height: 560, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
               No violation timing data available.

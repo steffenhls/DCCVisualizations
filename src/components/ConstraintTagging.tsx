@@ -13,9 +13,33 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
   onTaggingComplete,
   onBack
 }) => {
-  const [taggedConstraints, setTaggedConstraints] = useState<DashboardConstraint[]>(() => 
-    // Initialize all constraints with default tags
-    constraints.map(constraint => ({
+  const [taggedConstraints, setTaggedConstraints] = useState<DashboardConstraint[]>(() => {
+    // Try to load existing tags from localStorage
+    const savedTags = localStorage.getItem('constraintTags');
+    if (savedTags) {
+      try {
+        const parsedTags = JSON.parse(savedTags);
+        // Merge saved tags with current constraints
+        return constraints.map(constraint => {
+          const savedTag = parsedTags[constraint.id];
+          return {
+            ...constraint,
+            tag: savedTag || {
+              priority: 'MEDIUM' as const,
+              quality: false,
+              efficiency: false,
+              compliance: false,
+              group: undefined
+            }
+          };
+        });
+      } catch (error) {
+        console.error('Error loading saved tags:', error);
+      }
+    }
+    
+    // Initialize all constraints with default tags if no saved tags
+    return constraints.map(constraint => ({
       ...constraint,
       tag: {
         priority: 'MEDIUM' as const,
@@ -24,11 +48,22 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
         compliance: false,
         group: undefined
       }
-    }))
-  );
+    }));
+  });
 
   // Group management state
-  const [groups, setGroups] = useState<string[]>([]);
+  const [groups, setGroups] = useState<string[]>(() => {
+    // Load saved groups from localStorage
+    const savedGroups = localStorage.getItem('constraintGroups');
+    if (savedGroups) {
+      try {
+        return JSON.parse(savedGroups);
+      } catch (error) {
+        console.error('Error loading saved groups:', error);
+      }
+    }
+    return [];
+  });
   const [newGroupName, setNewGroupName] = useState('');
   const [showGroupDialog, setShowGroupDialog] = useState(false);
 
@@ -39,8 +74,8 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
   const [selectedGroup, setSelectedGroup] = useState('');
 
   const handleTagChange = useCallback((constraintId: string, field: keyof DashboardConstraint['tag'], value: any) => {
-    setTaggedConstraints(prev => 
-      prev.map(c => 
+    setTaggedConstraints(prev => {
+      const updated = prev.map(c => 
         c.id === constraintId 
           ? { 
               ...c, 
@@ -50,8 +85,17 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
               } 
             } 
           : c
-      )
-    );
+      );
+      
+      // Save to localStorage
+      const tagsToSave: Record<string, any> = {};
+      updated.forEach(constraint => {
+        tagsToSave[constraint.id] = constraint.tag;
+      });
+      localStorage.setItem('constraintTags', JSON.stringify(tagsToSave));
+      
+      return updated;
+    });
   }, []);
 
   const handleContinue = useCallback(() => {
@@ -61,26 +105,76 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
   // Group management functions
   const handleAddGroup = useCallback(() => {
     if (newGroupName.trim() && !groups.includes(newGroupName.trim())) {
-      setGroups(prev => [...prev, newGroupName.trim()]);
+      const updatedGroups = [...groups, newGroupName.trim()];
+      setGroups(updatedGroups);
+      localStorage.setItem('constraintGroups', JSON.stringify(updatedGroups));
       setNewGroupName('');
     }
   }, [newGroupName, groups]);
 
   const handleRemoveGroup = useCallback((groupName: string) => {
-    setGroups(prev => prev.filter(g => g !== groupName));
+    const updatedGroups = groups.filter(g => g !== groupName);
+    setGroups(updatedGroups);
+    localStorage.setItem('constraintGroups', JSON.stringify(updatedGroups));
+    
     // Remove group from all constraints that have it
-    setTaggedConstraints(prev => 
-      prev.map(c => 
+    setTaggedConstraints(prev => {
+      const updated = prev.map(c => 
         c.tag?.group === groupName 
           ? { ...c, tag: { ...c.tag, group: undefined } }
           : c
-      )
-    );
-  }, []);
+      );
+      
+      // Save to localStorage
+      const tagsToSave: Record<string, any> = {};
+      updated.forEach(constraint => {
+        tagsToSave[constraint.id] = constraint.tag;
+      });
+      localStorage.setItem('constraintTags', JSON.stringify(tagsToSave));
+      
+      return updated;
+    });
+  }, [groups]);
 
   const handleAssignGroup = useCallback((constraintId: string, groupName: string | undefined) => {
-    handleTagChange(constraintId, 'group', groupName);
-  }, [handleTagChange]);
+    setTaggedConstraints(prev => {
+      const updated = prev.map(c => 
+        c.id === constraintId 
+          ? { ...c, tag: { ...c.tag, group: groupName } }
+          : c
+      );
+      
+      // Save to localStorage
+      const tagsToSave: Record<string, any> = {};
+      updated.forEach(constraint => {
+        tagsToSave[constraint.id] = constraint.tag;
+      });
+      localStorage.setItem('constraintTags', JSON.stringify(tagsToSave));
+      
+      return updated;
+    });
+  }, []);
+
+  const handleClearAllTags = useCallback(() => {
+    if (window.confirm('Are you sure you want to clear all tags and groups? This action cannot be undone.')) {
+      // Clear localStorage
+      localStorage.removeItem('constraintTags');
+      localStorage.removeItem('constraintGroups');
+      
+      // Reset state
+      setTaggedConstraints(constraints.map(constraint => ({
+        ...constraint,
+        tag: {
+          priority: 'MEDIUM' as const,
+          quality: false,
+          efficiency: false,
+          compliance: false,
+          group: undefined
+        }
+      })));
+      setGroups([]);
+    }
+  }, [constraints]);
 
   // Handle group filter change with special case for "+ Create Group"
   const handleGroupFilterChange = useCallback((value: string) => {
@@ -308,6 +402,12 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
           onClick={handleContinue}
         >
           Continue to Analysis
+        </button>
+        <button 
+          className="clear-all-tags-button"
+          onClick={handleClearAllTags}
+        >
+          Clear All Tags & Groups
         </button>
       </div>
 

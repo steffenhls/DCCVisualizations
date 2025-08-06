@@ -254,6 +254,23 @@
   transform: translateY(1px);
 }
 
+.clear-all-tags-button {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  margin-left: 12px;
+}
+
+.clear-all-tags-button:hover {
+  background: #c0392b;
+}
+
 /* Filter styles */
 .tagging-filters {
   display: flex;
