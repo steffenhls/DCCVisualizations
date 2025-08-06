@@ -296,7 +296,6 @@ function generateDynamicHelpText(template: any, activities: string[]): string {
 function formatActivityName(activity: string): string {
   // Convert camelCase to Title Case with spaces
   return activity
-    .replace(/([A-Z])/g, ' $1') // Add space before capital letters
     .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
     .trim();
 }
