@@ -188,6 +188,7 @@ export interface TraceFilter {
   constraintTypes?: string[];
   sequence?: string;
   traceId?: string;
+  caseIds?: string; // Comma-separated case IDs for multiple filtering
 }
 
 export interface TraceSort {

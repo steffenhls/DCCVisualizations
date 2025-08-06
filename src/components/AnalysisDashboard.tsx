@@ -162,6 +162,15 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       if (traceFilter.hasInsertions && trace.insertions === 0) return false;
       if (traceFilter.hasDeletions && trace.deletions === 0) return false;
       if (traceFilter.traceId && trace.caseId !== traceFilter.traceId) return false;
+      
+      // Handle multiple case IDs filtering
+      if (traceFilter.caseIds && traceFilter.caseIds.trim()) {
+        const caseIdList = traceFilter.caseIds.split(',').map(id => id.trim()).filter(id => id.length > 0);
+        if (caseIdList.length > 0 && !caseIdList.includes(trace.caseId)) {
+          return false;
+        }
+      }
+      
       if (traceFilter.sequence) {
         // Filter by activity sequence
         const traceSequence = trace.events.map(e => e.activity).join(' → ');
@@ -1394,26 +1403,21 @@ const TracesView: React.FC<{
   processedConstraints: DashboardConstraint[];
   totalTraces: number;
 }> = ({ traces, traceFilter, setTraceFilter, traceSort, setTraceSort, onTraceClick, processedConstraints, totalTraces }) => {
-  const [traceIdSearch, setTraceIdSearch] = React.useState('');
-
-  // Filter traces by Trace ID search in addition to other filters
-  const filteredTraces = React.useMemo(() => {
-    if (!traceIdSearch) return traces;
-    return traces.filter(trace => trace.caseId.toLowerCase().includes(traceIdSearch.toLowerCase()));
-  }, [traces, traceIdSearch]);
-
   return (
     <div className="traces-view">
       {/* Filters */}
       <div className="trace-filters">
         <div className="filter-group">
-          <label>Case ID:</label>
+          <label>Case IDs (comma-separated):</label>
           <input
             type="text"
-            placeholder="Search Case ID..."
-            value={traceIdSearch}
-            onChange={e => setTraceIdSearch(e.target.value)}
-            style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc', fontSize: '1rem', width: 140, height: 36, boxSizing: 'border-box' }}
+            placeholder="e.g., case1, case2, case3..."
+            value={traceFilter.caseIds || ''}
+            onChange={e => setTraceFilter({
+              ...traceFilter,
+              caseIds: e.target.value
+            })}
+            style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc', fontSize: '1rem', width: 200, height: 36, boxSizing: 'border-box' }}
           />
         </div>
         <div className="filter-group">
@@ -1535,6 +1539,48 @@ const TracesView: React.FC<{
         </div>
       )}
 
+      {/* Case ID Filter */}
+      {traceFilter.caseIds && traceFilter.caseIds.trim() && (
+        <div className="constraint-filter-section">
+          <h4>Filtered by Case IDs:</h4>
+          <div className="constraint-filter-tags">
+            {traceFilter.caseIds.split(',').map((caseId, index) => {
+              const trimmedCaseId = caseId.trim();
+              if (!trimmedCaseId) return null;
+              return (
+                <div key={index} className="constraint-filter-tag">
+                  <span className="constraint-name">
+                    {trimmedCaseId}
+                  </span>
+                  <button
+                    className="remove-constraint-filter"
+                    onClick={() => {
+                      const caseIdList = traceFilter.caseIds!.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                      const newCaseIdList = caseIdList.filter(id => id !== trimmedCaseId);
+                      setTraceFilter({
+                        ...traceFilter,
+                        caseIds: newCaseIdList.join(', ')
+                      });
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              className="clear-all-constraints"
+              onClick={() => setTraceFilter({
+                ...traceFilter,
+                caseIds: undefined
+              })}
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sequence Filter */}
       {traceFilter.sequence && (
         <div className="constraint-filter-section">
@@ -1579,7 +1625,7 @@ const TracesView: React.FC<{
 
       {/* Results count */}
       <div className="traces-results">
-        <p>Showing {filteredTraces.length} of {totalTraces} traces</p>
+        <p>Showing {traces.length} of {totalTraces} traces</p>
       </div>
 
       {/* Traces Table */}
@@ -1606,7 +1652,7 @@ const TracesView: React.FC<{
             </tr>
           </thead>
           <tbody>
-            {filteredTraces.map(trace => (
+            {traces.map(trace => (
               <tr key={trace.caseId}>
                 <td>{trace.caseId}</td>
                 <td className={`fitness-cell ${trace.fitness < 0.5 ? 'low' : trace.fitness < 0.8 ? 'medium' : 'high'}`}>
