@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/DCCVisualizations/static/css/main.b2162f1a.css",
+    "main.js": "/DCCVisualizations/static/js/main.15f90796.js",
+    "index.html": "/DCCVisualizations/index.html",
+    "main.b2162f1a.css.map": "/DCCVisualizations/static/css/main.b2162f1a.css.map",
+    "main.15f90796.js.map": "/DCCVisualizations/static/js/main.15f90796.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.b2162f1a.css",
+    "static/js/main.15f90796.js"
+  ]
+}
