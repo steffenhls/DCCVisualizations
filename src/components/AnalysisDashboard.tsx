@@ -13,7 +13,7 @@ import TimeView from './TimeView';
 import ProcessModelView from './ProcessModelView';
 import ConstraintInterdependencyView from './ConstraintInterdependencyView';
 import './AnalysisDashboard.css';
-// import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Label, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Label, ResponsiveContainer } from 'recharts';
 
 interface AnalysisDashboardProps {
   uploadedFiles: any;
@@ -33,12 +33,91 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [coViolationMatrix, setCoViolationMatrix] = useState<number[][]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'overview' | 'constraints' | 'traces' | 'variants' | 'resource' | 'time' | 'model'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'constraints' | 'traces' | 'comparison' | 'discovery'>('overview');
+  const [traceListMode, setTraceListMode] = useState<'traces' | 'variants'>('traces');
   const [selectedTrace, setSelectedTrace] = useState<DashboardTrace | null>(null);
   const [traceFilter, setTraceFilter] = useState<TraceFilter>({});
   const [traceSort, setTraceSort] = useState<TraceSort>({ field: 'caseId', direction: 'asc' });
   const [showTraceDetail, setShowTraceDetail] = useState(false);
   const [initialConstraintFilter, setInitialConstraintFilter] = useState<string | null>(null);
+  const [showDiscoveryHelp, setShowDiscoveryHelp] = useState(true);
+  const [showDiscoveryResource, setShowDiscoveryResource] = useState(true);
+  const [showDiscoveryTime, setShowDiscoveryTime] = useState(true);
+  const [showDiscoveryInterdep, setShowDiscoveryInterdep] = useState(true);
+  const [showCasesHelp, setShowCasesHelp] = useState(true);
+  const [comparisonCases, setComparisonCases] = useState<DashboardTrace[]>([]);
+  // Variants comparison removed
+  const [expandedComparisonCaseIds, setExpandedComparisonCaseIds] = useState<Set<string>>(new Set());
+  const comparisonCaseIds = useMemo(() => new Set(comparisonCases.map(c => c.caseId)), [comparisonCases]);
+  const [showComparisonHelp, setShowComparisonHelp] = useState(true);
+  // Segmentation state (moved to Comparison tab)
+  type SegmentOp = '<' | '<=' | '==' | '>=' | '>';
+  const [segmentationEnabled, setSegmentationEnabled] = useState(false);
+  const [segmentActivity, setSegmentActivity] = useState('Any');
+  const [segmentAttribute, setSegmentAttribute] = useState('Age');
+  const [segmentRules, setSegmentRules] = useState<Array<{ label: string; op: SegmentOp; value: number }>>([
+    { label: 'Age < 60', op: '<', value: 60 },
+    { label: 'Age ≥ 60', op: '>=', value: 60 }
+  ]);
+  const extractNumericAttribute = useCallback((trace: DashboardTrace, activity: string, attribute: string): number | undefined => {
+    const normAttr = attribute.toLowerCase();
+    const eventsToSearch = activity && activity !== 'Any'
+      ? trace.events.filter(e => e.activity === activity)
+      : trace.events;
+    for (const ev of eventsToSearch) {
+      if (!ev.attributes) continue;
+      let raw = ev.attributes[attribute];
+      if (raw === undefined) {
+        const key = Object.keys(ev.attributes).find(k => k.toLowerCase() === normAttr);
+        if (key) raw = ev.attributes[key];
+      }
+      if (raw !== undefined && raw !== null) {
+        const parsed = typeof raw === 'number' ? raw : parseFloat(String(raw));
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    return undefined;
+  }, []);
+  const segments = useMemo(() => {
+    if (!segmentationEnabled) return [] as Array<{ label: string; traces: DashboardTrace[] }>;
+    return segmentRules.map(rule => {
+      const segTraces = traces.filter(t => {
+        const v = extractNumericAttribute(t, segmentActivity, segmentAttribute);
+        if (v === undefined) return false;
+        switch (rule.op) {
+          case '<': return v < rule.value;
+          case '<=': return v <= rule.value;
+          case '==': return v === rule.value;
+          case '>=': return v >= rule.value;
+          case '>': return v > rule.value;
+          default: return false;
+        }
+      });
+      return { label: rule.label, traces: segTraces };
+    });
+  }, [segmentationEnabled, segmentRules, traces, extractNumericAttribute, segmentActivity, segmentAttribute]);
+  const computeKpisFor = useCallback((subset: DashboardTrace[]) => {
+    const count = subset.length;
+    const avgFitness = count > 0 ? subset.reduce((s, t) => s + t.fitness, 0) / count : 0;
+    const conformance = count > 0 ? subset.reduce((s, t) => s + (t.violations === 0 ? 1 : 0), 0) / count : 0;
+    const avgViolations = count > 0 ? subset.reduce((s, t) => s + t.violations, 0) / count : 0;
+    const avgAlignCost = count > 0 ? subset.reduce((s, t) => s + (t.insertions + t.deletions), 0) / count : 0;
+    return { count, avgFitness, conformance, avgViolations, avgAlignCost };
+  }, []);
+  useEffect(() => {
+    if (!segmentationEnabled) return;
+    console.log('[Segmentation] Activity:', segmentActivity, 'Attribute:', segmentAttribute);
+    segments.forEach(seg => {
+      const k = computeKpisFor(seg.traces);
+      console.log(`[Segmentation] Segment "${seg.label}":`, {
+        traceCount: k.count,
+        avgFitness: k.avgFitness,
+        conformance: k.conformance,
+        avgViolations: k.avgViolations,
+        avgAlignmentCost: k.avgAlignCost,
+      });
+    });
+  }, [segments, segmentationEnabled, segmentActivity, segmentAttribute, computeKpisFor]);
 
   // Process uploaded files
   useEffect(() => {
@@ -131,6 +210,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     if (activeView !== 'traces') {
       setTraceFilter({});
       setTraceSort({ field: 'caseId', direction: 'asc' });
+      setTraceListMode('traces');
     }
   }, [activeView]);
 
@@ -325,9 +405,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   }, [traceFilter]);
 
   const handleNavigateToVariants = useCallback(() => {  
-    // Navigate to variants view
-    setActiveView('variants');
+    // Switch to variants view within traces section
+    setTraceListMode('variants');
+    setActiveView('traces');
   }, []);
+
+  const handleAddCaseToComparison = useCallback((trace: DashboardTrace) => {
+    setComparisonCases(prev => prev.some(t => t.caseId === trace.caseId) ? prev : [...prev, trace]);
+  }, []);
+
+  const handleRemoveCaseFromComparison = useCallback((caseId: string) => {
+    setComparisonCases(prev => prev.filter(t => t.caseId !== caseId));
+  }, []);
+
+  // Variant comparison handlers removed
 
   const handleNavigateToTracesFromHeatmap = useCallback((filter: { constraintId?: string; timeRange?: string; traceId?: string }) => {
     // Navigate to traces view with constraint filtering
@@ -383,12 +474,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           >
             Overview
           </button>
-          <button
-            className={`tab ${activeView === 'model' ? 'active' : ''}`}
-            onClick={() => setActiveView('model')}
-          >
-            Model
-          </button>
+          
           <button
             className={`tab ${activeView === 'constraints' ? 'active' : ''}`}
             onClick={() => setActiveView('constraints')}
@@ -399,25 +485,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             className={`tab ${activeView === 'traces' ? 'active' : ''}`}
             onClick={() => setActiveView('traces')}
           >
-            Traces
+            Cases
+          </button>
+          
+          <button
+            className={`tab ${activeView === 'discovery' ? 'active' : ''}`}
+            onClick={() => setActiveView('discovery')}
+          >
+            Discovery
           </button>
           <button
-            className={`tab ${activeView === 'variants' ? 'active' : ''}`}
-            onClick={() => setActiveView('variants')}
+            className={`tab ${activeView === 'comparison' ? 'active' : ''}`}
+            onClick={() => setActiveView('comparison')}
           >
-            Variants
-          </button>
-          <button
-            className={`tab ${activeView === 'resource' ? 'active' : ''}`}
-            onClick={() => setActiveView('resource')}
-          >
-            Resource
-          </button>
-          <button
-            className={`tab ${activeView === 'time' ? 'active' : ''}`}
-            onClick={() => setActiveView('time')}
-          >
-            Time
+            Comparison
           </button>
       </div>
 
@@ -453,59 +534,374 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           />
         )}
 
-        {activeView === 'traces' && (
-          <TracesView
-            traces={filteredAndSortedTraces()}
-            traceFilter={traceFilter}
-            setTraceFilter={setTraceFilter}
-            traceSort={traceSort}
-            setTraceSort={setTraceSort}
-            onTraceClick={handleTraceClick}
-              processedConstraints={processedConstraints}
-              totalTraces={traces.length}
-          />
-        )}
-
-          {activeView === 'variants' && (
-            <VariantsView
-              traces={traces}
-              processedConstraints={processedConstraints}
-              modelVisualization={modelVisualization}
-              setSelectedTrace={setSelectedTrace}
-              setShowTraceDetail={setShowTraceDetail}
-              onNavigateToTracesWithSequenceFilter={handleNavigateToTracesWithSequenceFilter}
-            />
+          {activeView === 'traces' && (
+            <div>
+              <section className="section" style={{ marginBottom: '1rem' }}>
+                <div className="section-header">
+                  <h2 className="section-title">Cases Guide</h2>
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowCasesHelp(prev => !prev)}
+                    aria-expanded={showCasesHelp}
+                    aria-controls="cases-help"
+                    title={showCasesHelp ? 'Collapse' : 'Expand'}
+                  >
+                    <span className={`chevron ${showCasesHelp ? 'expanded' : ''}`}>▶</span>
+                  </button>
+                </div>
+                {showCasesHelp && (
+                  <div id="cases-help" className="section-content">
+                    <p style={{ marginTop: 0, color: '#495057' }}>
+                      The Cases tab is designed to identify guideline violations at the trace and variant level and to select cases/variants for comparison.
+                    </p>
+                  </div>
+                )}
+              </section>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'inline-flex', background: '#f0f2f5', borderRadius: 8, padding: 4 }}>
+                  <button
+                    onClick={() => setTraceListMode('traces')}
+                    className="section-toggle"
+                    style={{
+                      background: traceListMode === 'traces' ? '#fff' : 'transparent',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 6,
+                      padding: '6px 10px',
+                      marginRight: 4,
+                      color: traceListMode === 'traces' ? '#2c3e50' : '#6c757d',
+                      fontWeight: 600
+                    }}
+                  >
+                    Traces
+                  </button>
+                  <button
+                    onClick={() => setTraceListMode('variants')}
+                    className="section-toggle"
+                    style={{
+                      background: traceListMode === 'variants' ? '#fff' : 'transparent',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 6,
+                      padding: '6px 10px',
+                      color: traceListMode === 'variants' ? '#2c3e50' : '#6c757d',
+                      fontWeight: 600
+                    }}
+                  >
+                    Variants
+                  </button>
+                </div>
+              </div>
+              {traceListMode === 'traces' ? (
+                <TracesView
+                  traces={filteredAndSortedTraces()}
+                  traceFilter={traceFilter}
+                  setTraceFilter={setTraceFilter}
+                  traceSort={traceSort}
+                  setTraceSort={setTraceSort}
+                  onTraceClick={handleTraceClick}
+                  processedConstraints={processedConstraints}
+                  totalTraces={traces.length}
+                  onAddToComparison={handleAddCaseToComparison}
+                  isInComparison={(caseId: string) => comparisonCaseIds.has(caseId)}
+                />
+              ) : (
+                <VariantsView
+                  traces={traces}
+                  processedConstraints={processedConstraints}
+                  modelVisualization={modelVisualization}
+                  setSelectedTrace={setSelectedTrace}
+                  setShowTraceDetail={setShowTraceDetail}
+                  onNavigateToTracesWithSequenceFilter={handleNavigateToTracesWithSequenceFilter}
+                />
+              )}
+              {/* Comparison Tab Content */}
+            </div>
           )}
 
-          {activeView === 'resource' && (
-            <ResourceView 
-              traces={traces}
-              constraints={processedConstraints}
-            />
+          {activeView === 'comparison' && (
+            <div className="constraints-view">
+              {/* Comparison Guide */}
+              <section className="section">
+                <div className="section-header">
+                  <h2 className="section-title">Comparison Guide</h2>
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowComparisonHelp(prev => !prev)}
+                    aria-expanded={showComparisonHelp}
+                    aria-controls="comparison-help"
+                    title={showComparisonHelp ? 'Collapse' : 'Expand'}
+                  >
+                    <span className={`chevron ${showComparisonHelp ? 'expanded' : ''}`}>▶</span>
+                  </button>
+                </div>
+                {showComparisonHelp && (
+                  <div id="comparison-help" className="section-content">
+                    <p style={{ marginTop: 0, color: '#495057' }}>
+                      This tab lets you compare process conformance across segmented subsets of traces (e.g., by Age) and across selected cases. Use the Segmented Overview to define groups and the Cases section to build a comparison set.
+                    </p>
+                  </div>
+                )}
+              </section>
+              {/* Segmented Overview */}
+              <div className="section">
+                <div className="section-header">
+                  <h2 className="section-title">Segmented Overview</h2>
+                </div>
+                <div className="section-content">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" checked={segmentationEnabled} onChange={e => setSegmentationEnabled(e.target.checked)} /> Enable segmentation
+                    </label>
+                    <label style={{ fontWeight: 600, color: '#2c3e50' }}>Activity:</label>
+                    <input value={segmentActivity} onChange={e => setSegmentActivity(e.target.value)} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+                    <label style={{ fontWeight: 600, color: '#2c3e50' }}>Attribute:</label>
+                    <input value={segmentAttribute} onChange={e => setSegmentAttribute(e.target.value)} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+                  </div>
+                  {segmentationEnabled && (
+                    <div style={{ marginBottom: 12 }}>
+                      {segmentRules.map((r, idx) => (
+                        <div key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 12, marginBottom: 8 }}>
+                          <input value={r.label} onChange={e => {
+                            const nr = [...segmentRules]; nr[idx] = { ...nr[idx], label: e.target.value }; setSegmentRules(nr);
+                          }} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+                          <select value={r.op} onChange={e => {
+                            const nr = [...segmentRules]; nr[idx] = { ...nr[idx], op: e.target.value as SegmentOp }; setSegmentRules(nr);
+                          }} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }}>
+                            <option value="<">&lt;</option>
+                            <option value="<=">≤</option>
+                            <option value="==">=</option>
+                            <option value=">=">≥</option>
+                            <option value=">">&gt;</option>
+                          </select>
+                          <input type="number" value={r.value} onChange={e => {
+                            const nr = [...segmentRules]; nr[idx] = { ...nr[idx], value: parseFloat(e.target.value) }; setSegmentRules(nr);
+                          }} style={{ width: 90, padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+                          <button className="detail-button" style={{ background: '#dc3545' }} onClick={() => setSegmentRules(segmentRules.filter((_, i) => i !== idx))}>Remove</button>
+                        </div>
+                      ))}
+                      <button className="detail-button" onClick={() => setSegmentRules([...segmentRules, { label: `Rule ${segmentRules.length + 1}`, op: '>=', value: 0 }])}>Add Rule</button>
+                    </div>
+                  )}
+                  {segmentationEnabled && (
+                    <div className="kpi-grid">
+                      {segments.map(seg => {
+                        const k = computeKpisFor(seg.traces);
+                        return (
+                          <div key={seg.label} className="kpi-card">
+                            <h3>{seg.label}</h3>
+                            <div className="kpi-value" style={{ fontSize: '1.5rem', height: '2.5rem' }}>{k.count} traces</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                              <div>
+                                <div style={{ fontSize: 14 }}>Fitness</div>
+                                <div style={{ fontWeight: 700 }}>{(k.avgFitness * 100).toFixed(1)}%</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 14 }}>Conformance</div>
+                                <div style={{ fontWeight: 700 }}>{(k.conformance * 100).toFixed(1)}%</div>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 8, color: 'white' }}>
+                              <div style={{ background: '#e74c3c', padding: '4px 8px', borderRadius: 6 }}>Avg Viol: {k.avgViolations.toFixed(1)}</div>
+                              <div style={{ background: '#3498db', padding: '4px 8px', borderRadius: 6 }}>Avg Align: {k.avgAlignCost.toFixed(1)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="section">
+                <div className="section-header">
+                  <h2 className="section-title">Cases for Comparison</h2>
+                </div>
+                <div className="section-content">
+                  {comparisonCases.length === 0 ? (
+                    <p style={{ color: '#6c757d' }}>No cases added yet. Use “Add to comparison” in Cases to collect cases here.</p>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e9ecef' }}>Case ID</th>
+                          <th style={{ textAlign: 'center', padding: 8, borderBottom: '1px solid #e9ecef' }}>Fitness</th>
+                          <th style={{ textAlign: 'center', padding: 8, borderBottom: '1px solid #e9ecef' }}>Violations</th>
+                          <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #e9ecef' }}>Violated Rules</th>
+                          <th style={{ textAlign: 'center', padding: 8, borderBottom: '1px solid #e9ecef' }}>Fulfilments</th>
+                          <th style={{ textAlign: 'center', padding: 8, borderBottom: '1px solid #e9ecef' }}>Align. Cost</th>
+                          <th style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #e9ecef' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {comparisonCases.map(trace => {
+                          const violatedRules = (trace.constraintDetails || [])
+                            .filter(d => d.totalViolations > 0)
+                            .map(d => d.constraintId);
+                          const isExpanded = expandedComparisonCaseIds.has(trace.caseId);
+                          return (
+                            <>
+                              <tr key={trace.caseId}>
+                                <td style={{ padding: 8, borderBottom: '1px solid #f1f3f5' }}>{trace.caseId}</td>
+                                <td style={{ padding: 8, textAlign: 'center', borderBottom: '1px solid #f1f3f5' }}>{(trace.fitness * 100).toFixed(1)}%</td>
+                                <td style={{ padding: 8, textAlign: 'center', borderBottom: '1px solid #f1f3f5' }}>{trace.violations}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #f1f3f5' }} title={violatedRules.join(', ')}>
+                                  {violatedRules.length === 0 ? (
+                                    <span style={{ color: '#6c757d' }}>None</span>
+                                  ) : (
+                                    <code>
+                                      {violatedRules.slice(0, 3).join(', ')}
+                                      {violatedRules.length > 3 ? '…' : ''}
+                                    </code>
+                                  )}
+                                </td>
+                                <td style={{ padding: 8, textAlign: 'center', borderBottom: '1px solid #f1f3f5' }}>{trace.fulfilments}</td>
+                                <td style={{ padding: 8, textAlign: 'center', borderBottom: '1px solid #f1f3f5' }}>{trace.insertions + trace.deletions}</td>
+                                <td style={{ padding: 8, textAlign: 'right', borderBottom: '1px solid #f1f3f5', whiteSpace: 'nowrap' }}>
+                                  <button
+                                    className="detail-button"
+                                    style={{ marginRight: 8 }}
+                                    onClick={() => {
+                                      const s = new Set(expandedComparisonCaseIds);
+                                      if (s.has(trace.caseId)) s.delete(trace.caseId); else s.add(trace.caseId);
+                                      setExpandedComparisonCaseIds(s);
+                                    }}
+                                  >
+                                    {isExpanded ? 'Hide Flow' : 'Show Flow'}
+                                  </button>
+                                  <button className="detail-button" style={{ background: '#dc3545' }} onClick={() => handleRemoveCaseFromComparison(trace.caseId)}>Remove</button>
+                                </td>
+                              </tr>
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={7} style={{ padding: 8, background: '#f8f9fa', borderBottom: '1px solid #e9ecef' }}>
+                                    <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e9ecef', padding: 12 }}>
+                                      <ProcessModelView
+                                        modelVisualization={null}
+                                        traces={[trace]}
+                                        onConstraintClick={() => {}}
+                                      />
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+              
+            </div>
           )}
 
-          {activeView === 'time' && (
-            <TimeView 
-              traces={traces}
-              constraints={processedConstraints}
-              onNavigateToTraces={handleNavigateToTracesFromHeatmap}
-            />
+          {activeView === 'discovery' && (
+            <div className="discovery-sections">
+              <section className="section">
+                <div className="section-header">
+                  <h2 className="section-title">Discovery Guide</h2>
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowDiscoveryHelp(prev => !prev)}
+                    aria-expanded={showDiscoveryHelp}
+                    aria-controls="discovery-help"
+                    title={showDiscoveryHelp ? 'Collapse' : 'Expand'}
+                  >
+                    <span className={`chevron ${showDiscoveryHelp ? 'expanded' : ''}`}>▶</span>
+                  </button>
+                </div>
+                {showDiscoveryHelp && (
+                  <div id="discovery-help" className="section-content">
+                    <p style={{ marginTop: 0, color: '#495057' }}>
+                      This tab is designed to help you discover reasons for guideline violations with a focus on <strong>resources</strong> and <strong>time</strong>.
+                    </p>
+                    <ul style={{ margin: '0.5rem 0 0 1.25rem', color: '#495057' }}>
+                      <li><strong>Resource</strong>: See which resources (people/roles) are most often involved when violations occur.</li>
+                      <li><strong>Time</strong>: Inspect when within a trace violations happen and how durations relate to conformance.</li>
+                    </ul>
+                    <p style={{ color: '#6c757d', marginTop: '0.75rem' }}>
+                      Tip: Click items in charts (e.g., heatmap cells or timeline dots) to jump to affected traces for deeper inspection.
+                    </p>
+                  </div>
+                )}
+              </section>
+              <section className="section">
+                <div className="section-header">
+                  <h2 className="section-title">Resource Insights</h2>
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowDiscoveryResource(prev => !prev)}
+                    aria-expanded={showDiscoveryResource}
+                    aria-controls="discovery-resource"
+                    title={showDiscoveryResource ? 'Collapse' : 'Expand'}
+                  >
+                    <span className={`chevron ${showDiscoveryResource ? 'expanded' : ''}`}>▶</span>
+                  </button>
+                </div>
+                {showDiscoveryResource && (
+                  <div id="discovery-resource" className="section-content">
+                    <ResourceView 
+                      traces={traces}
+                      constraints={processedConstraints}
+                    />
+                  </div>
+                )}
+              </section>
+              <section className="section">
+                <div className="section-header">
+                  <h2 className="section-title">Time Insights</h2>
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowDiscoveryTime(prev => !prev)}
+                    aria-expanded={showDiscoveryTime}
+                    aria-controls="discovery-time"
+                    title={showDiscoveryTime ? 'Collapse' : 'Expand'}
+                  >
+                    <span className={`chevron ${showDiscoveryTime ? 'expanded' : ''}`}>▶</span>
+                  </button>
+                </div>
+                {showDiscoveryTime && (
+                  <div id="discovery-time" className="section-content">
+                    <TimeView 
+                      traces={traces}
+                      constraints={processedConstraints}
+                      onNavigateToTraces={handleNavigateToTracesFromHeatmap}
+                    />
+                  </div>
+                )}
+              </section>
+              <section className="section">
+                <div className="section-header">
+                  <h2 className="section-title">Constraint Insights</h2>
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowDiscoveryInterdep(prev => !prev)}
+                    aria-expanded={showDiscoveryInterdep}
+                    aria-controls="discovery-interdependency"
+                    title={showDiscoveryInterdep ? 'Collapse' : 'Expand'}
+                  >
+                    <span className={`chevron ${showDiscoveryInterdep ? 'expanded' : ''}`}>▶</span>
+                  </button>
+                </div>
+                {showDiscoveryInterdep && (
+                  <div id="discovery-interdependency" className="section-content">
+                    <ConstraintInterdependencyView
+                      constraints={processedConstraints}
+                      coViolationMatrix={coViolationMatrix}
+                    />
+                  </div>
+                )}
+              </section>
+            </div>
           )}
 
-          {activeView === 'model' && (
-            <ProcessModelView 
-              modelVisualization={modelVisualization}
-              traces={traces}
-              onConstraintClick={handleConstraintClick}
-            />
-          )}
+          
         </div>
       </div>
 
       {/* Trace Detail Modal */}
       {showTraceDetail && selectedTrace && (
         <TraceDetailModal
-          trace={selectedTrace}
+          trace={selectedTrace!}
           onClose={handleCloseTraceDetail}
         />
       )}
@@ -543,6 +939,89 @@ const OverviewView: React.FC<{
     criticalViolations: 0,
     highPriorityViolations: 0
   });
+
+  // Segmentation (flexible attribute-based) state
+  type SegmentOp = '<' | '<=' | '==' | '>=' | '>';
+  const [segmentationEnabled, setSegmentationEnabled] = useState(false);
+  const [segmentActivity, setSegmentActivity] = useState('Any');
+  const [segmentAttribute, setSegmentAttribute] = useState('Age');
+  const [segmentRules, setSegmentRules] = useState<Array<{ label: string; op: SegmentOp; value: number }>>([
+    { label: 'Age < 60', op: '<', value: 60 },
+    { label: 'Age ≥ 60', op: '>=', value: 60 }
+  ]);
+
+  const extractNumericAttribute = useCallback((trace: DashboardTrace, activity: string, attribute: string): number | undefined => {
+    const normAttr = attribute.toLowerCase();
+    const eventsToSearch = activity && activity !== 'Any'
+      ? trace.events.filter(e => e.activity === activity)
+      : trace.events;
+    console.log(eventsToSearch)
+    for (const ev of eventsToSearch) {
+      if (!ev.attributes) continue;
+      // direct match
+      let raw = ev.attributes[attribute];
+      if (raw === undefined) {
+        // case-insensitive fallback
+        const key = Object.keys(ev.attributes).find(k => k.toLowerCase() === normAttr);
+        if (key) raw = ev.attributes[key];
+      }
+      if (raw !== undefined && raw !== null) {
+        const parsed = typeof raw === 'number' ? raw : parseFloat(String(raw));
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    return undefined;
+  }, []);
+
+  const segments = useMemo(() => {
+    if (!segmentationEnabled) return [] as Array<{ label: string; traces: DashboardTrace[] }>;
+    console.log('segmentRules', segmentRules);
+    console.log('segmentActivity', segmentActivity);
+    console.log('segmentAttribute', segmentAttribute);
+    console.log('traces', traces);
+    return segmentRules.map(rule => {
+      const segTraces = traces.filter(t => {
+        const v = extractNumericAttribute(t, segmentActivity, segmentAttribute);
+        if (v === undefined) return false;
+        switch (rule.op) {
+          case '<': return v < rule.value;
+          case '<=': return v <= rule.value;
+          case '==': return v === rule.value;
+          case '>=': return v >= rule.value;
+          case '>': return v > rule.value;
+          default: return false;
+        }
+      });
+      return { label: rule.label, traces: segTraces };
+    });
+  }, [segmentationEnabled, segmentRules, traces, extractNumericAttribute, segmentActivity, segmentAttribute]);
+
+  const computeKpisFor = useCallback((subset: DashboardTrace[]) => {
+    const count = subset.length;
+    const avgFitness = count > 0 ? subset.reduce((s, t) => s + t.fitness, 0) / count : 0;
+    const conformance = count > 0 ? subset.reduce((s, t) => s + (t.violations === 0 ? 1 : 0), 0) / count : 0;
+    const avgViolations = count > 0 ? subset.reduce((s, t) => s + t.violations, 0) / count : 0;
+    const avgAlignCost = count > 0 ? subset.reduce((s, t) => s + (t.insertions + t.deletions), 0) / count : 0;
+    return { count, avgFitness, conformance, avgViolations, avgAlignCost };
+  }, []);
+
+  useEffect(() => {
+    if (!segmentationEnabled) return;
+    console.log('[Segmentation] Activity:', segmentActivity, 'Attribute:', segmentAttribute);
+    segments.forEach(seg => {
+      const k = computeKpisFor(seg.traces);
+      console.log(`[Segmentation] Segment "${seg.label}":`, {
+        traceCount: k.count,
+        avgFitness: k.avgFitness,
+        conformance: k.conformance,
+        avgViolations: k.avgViolations,
+        avgAlignmentCost: k.avgAlignCost,
+      });
+    });
+  }, [segments, segmentationEnabled, segmentActivity, segmentAttribute, computeKpisFor]);
+  const [showOverviewHelp, setShowOverviewHelp] = useState(true);
+  const [showOverviewConformance, setShowOverviewConformance] = useState(true);
+  const [showOverviewProcess, setShowOverviewProcess] = useState(true);
 
   // Animate values when component mounts
   useEffect(() => {
@@ -686,8 +1165,119 @@ const OverviewView: React.FC<{
 
   return (
     <div className="overview-view">
-      {/* KPI Cards */}
-      <div className="kpi-grid">
+      <div className="discovery-sections">
+        {/* Segmented Overview */}
+        {/* Segmented Overview moved to Comparison tab */}
+        {/* Placeholder retained empty */}
+        <section className="section" style={{ display: 'none' }}>
+          <div className="section-header">
+            <h2 className="section-title">Segmented Overview</h2>
+          </div>
+          <div className="section-content">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" checked={segmentationEnabled} onChange={e => setSegmentationEnabled(e.target.checked)} /> Enable segmentation
+              </label>
+              <label style={{ fontWeight: 600, color: '#2c3e50' }}>Activity:</label>
+              <input value={segmentActivity} onChange={e => setSegmentActivity(e.target.value)} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+              <label style={{ fontWeight: 600, color: '#2c3e50' }}>Attribute:</label>
+              <input value={segmentAttribute} onChange={e => setSegmentAttribute(e.target.value)} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+            </div>
+            {segmentationEnabled && (
+              <div style={{ marginBottom: 12 }}>
+                {segmentRules.map((r, idx) => (
+                  <div key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 12, marginBottom: 8 }}>
+                    <input value={r.label} onChange={e => {
+                      const nr = [...segmentRules]; nr[idx] = { ...nr[idx], label: e.target.value }; setSegmentRules(nr);
+                    }} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+                    <select value={r.op} onChange={e => {
+                      const nr = [...segmentRules]; nr[idx] = { ...nr[idx], op: e.target.value as SegmentOp }; setSegmentRules(nr);
+                    }} style={{ padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }}>
+                      <option value="<">&lt;</option>
+                      <option value="<=">≤</option>
+                      <option value="==">=</option>
+                      <option value=">=">≥</option>
+                      <option value=">">&gt;</option>
+                    </select>
+                    <input type="number" value={r.value} onChange={e => {
+                      const nr = [...segmentRules]; nr[idx] = { ...nr[idx], value: parseFloat(e.target.value) }; setSegmentRules(nr);
+                    }} style={{ width: 90, padding: '6px 8px', border: '1px solid #dee2e6', borderRadius: 4 }} />
+                    <button className="detail-button" style={{ background: '#dc3545' }} onClick={() => setSegmentRules(segmentRules.filter((_, i) => i !== idx))}>Remove</button>
+                  </div>
+                ))}
+                <button className="detail-button" onClick={() => setSegmentRules([...segmentRules, { label: `Rule ${segmentRules.length + 1}`, op: '>=', value: 0 }])}>Add Rule</button>
+              </div>
+            )}
+            {segmentationEnabled && (
+              <div className="kpi-grid">
+                {segments.map(seg => {
+                  const k = computeKpisFor(seg.traces);
+                  return (
+                    <div key={seg.label} className="kpi-card">
+                      <h3>{seg.label}</h3>
+                      <div className="kpi-value" style={{ fontSize: '1.5rem', height: '2.5rem' }}>{k.count} traces</div>
+                      <div className="kpi-value-with-progress" style={{ marginTop: 0 }}>
+                        {renderCircularProgress(k.avgFitness * 100, 70)}
+                      </div>
+                      <div style={{ textAlign: 'center', marginTop: 6 }}>Fitness</div>
+                      <div className="kpi-value-with-progress" style={{ marginTop: 8 }}>
+                        {renderCircularProgress(k.conformance * 100, 70)}
+                      </div>
+                      <div style={{ textAlign: 'center', marginTop: 6 }}>Conformance</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 8, color: 'white' }}>
+                        <div style={{ background: '#e74c3c', padding: '4px 8px', borderRadius: 6 }}>Avg Viol: {k.avgViolations.toFixed(1)}</div>
+                        <div style={{ background: '#3498db', padding: '4px 8px', borderRadius: 6 }}>Avg Align: {k.avgAlignCost.toFixed(1)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+        <section className="section">
+          <div className="section-header">
+            <h2 className="section-title">Overview Guide</h2>
+            <button
+              className="section-toggle"
+              onClick={() => setShowOverviewHelp(prev => !prev)}
+              aria-expanded={showOverviewHelp}
+              aria-controls="overview-help"
+              title={showOverviewHelp ? 'Collapse' : 'Expand'}
+            >
+              <span className={`chevron ${showOverviewHelp ? 'expanded' : ''}`}>▶</span>
+            </button>
+          </div>
+          {showOverviewHelp && (
+            <div id="overview-help" className="section-content">
+              <p style={{ marginTop: 0, color: '#495057' }}>
+                The Overview tab is designed to derive overall process conformance, present and identify guideline violations at a high level, and show the conformance distribution across traces.
+              </p>
+              <ul style={{ margin: '0.5rem 0 0 1.25rem', color: '#495057' }}>
+                <li><strong>Conformance KPIs</strong>: At-a-glance metrics for traces, constraints, and overall conformance.</li>
+                <li><strong>Violations overview</strong>: High-level counts for critical and high-priority violations.</li>
+                <li><strong>Conformance distribution</strong>: Fitness distribution chart to see how traces spread across conformance levels.</li>
+              </ul>
+            </div>
+          )}
+        </section>
+        <section className="section">
+          <div className="section-header">
+            <h2 className="section-title">Conformance</h2>
+            <button
+              className="section-toggle"
+              onClick={() => setShowOverviewConformance(prev => !prev)}
+              aria-expanded={showOverviewConformance}
+              aria-controls="overview-conformance"
+              title={showOverviewConformance ? 'Collapse' : 'Expand'}
+            >
+              <span className={`chevron ${showOverviewConformance ? 'expanded' : ''}`}>▶</span>
+            </button>
+          </div>
+          {showOverviewConformance && (
+          <div id="overview-conformance" className="section-content">
+            {/* KPI Cards */}
+            <div className="kpi-grid">
         <div 
           className="kpi-card clickable" 
           style={{ cursor: onNavigateToTraces ? 'pointer' : 'default' }}
@@ -796,22 +1386,21 @@ const OverviewView: React.FC<{
           <h3>High Priority Violations</h3>
           <div className="kpi-value" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: 0, marginTop: '1rem' }}>{animatedValues.highPriorityViolations}</div>
         </div>
-      </div>
-      
-      {/* Fitness Distribution Chart 
-      <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-        <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>Fitness Distribution</h3>
-        <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: '1rem' }}>
-          Distribution of trace fitness scores across all traces.
-        </div>
-        <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
-          {traces.length === 0 ? (
-            <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
-              No trace data available for fitness distribution.
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={(() => {
+            
+            <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+              <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>Fitness Distribution</h3>
+              <div style={{ color: '#888', fontSize: '0.98rem', marginBottom: '1rem' }}>
+                Distribution of trace fitness scores across all traces.
+              </div>
+              <div style={{ height: 400, background: '#f8f9fa', borderRadius: 8, padding: 16 }}>
+                {traces.length === 0 ? (
+                  <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+                    No trace data available for fitness distribution.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={360}>
+                    <BarChart data={(() => {
                 // Create fitness distribution bins
                 const bins: { [key: string]: number } = {
                   '0.0-0.1': 0,
@@ -845,34 +1434,61 @@ const OverviewView: React.FC<{
                   count,
                   percentage: (count / traces.length) * 100
                 }));
-              })()} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="range" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={60}
-                  tick={{ fontSize: 12 }}
-                >
-                  <Label value="Fitness Range" offset={20} position="bottom" />
-                </XAxis>
-                <YAxis 
-                  allowDecimals={false}
-                  label={{ value: 'Number of Traces', angle: -90, position: 'insideLeft'}}
-                />
-                <Tooltip 
-                  formatter={(value: any, name: string) => [
-                    `${value} traces (${((value / traces.length) * 100).toFixed(1)}%)`, 
-                    'Count'
-                  ]}
-                  labelFormatter={(label) => `Fitness: ${label}`}
-                />
-                <Bar dataKey="count" fill="#667eea" name="Trace Count" />
-              </BarChart>
-            </ResponsiveContainer>
+                })()} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="range" 
+                        angle={-45} 
+                        textAnchor="end" 
+                        height={60}
+                        tick={{ fontSize: 12 }}
+                      >
+                        <Label value="Fitness Range" offset={20} position="bottom" />
+                      </XAxis>
+                      <YAxis 
+                        allowDecimals={false}
+                        label={{ value: 'Number of Traces', angle: -90, position: 'insideLeft'}}
+                      />
+                      <Tooltip 
+                        formatter={(value: any, name: string) => [
+                          `${value} traces (${((value / traces.length) * 100).toFixed(1)}%)`, 
+                          'Count'
+                        ]}
+                        labelFormatter={(label) => `Fitness: ${label}`}
+                      />
+                      <Bar dataKey="count" fill="#667eea" name="Trace Count" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
           )}
-        </div>
-      </div>*/}
+        </section>
+        <section className="section">
+          <div className="section-header">
+            <h2 className="section-title">Process</h2>
+            <button
+              className="section-toggle"
+              onClick={() => setShowOverviewProcess(prev => !prev)}
+              aria-expanded={showOverviewProcess}
+              aria-controls="overview-process"
+              title={showOverviewProcess ? 'Collapse' : 'Expand'}
+            >
+              <span className={`chevron ${showOverviewProcess ? 'expanded' : ''}`}>▶</span>
+            </button>
+          </div>
+          {showOverviewProcess && (
+          <div id="overview-process" className="section-content">
+            <ProcessModelView 
+              modelVisualization={modelVisualization}
+              traces={traces}
+              onConstraintClick={onConstraintClick || (() => {})}
+            />
+          </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 };
@@ -887,6 +1503,7 @@ const ConstraintsView: React.FC<{
   onNavigateToTracesWithVisibleConstraints: (visibleConstraintIds: string[]) => void;
   coViolationMatrix: number[][];
 }> = ({ constraints, modelVisualization, onConstraintClick, initialFilter, onFilterSet, onNavigateToTracesWithVisibleConstraints, coViolationMatrix }) => {
+  const [showConstraintsHelp, setShowConstraintsHelp] = useState(true);
   const [constraintFilter, setConstraintFilter] = useState({
     priority: '',
     categories: [] as string[],
@@ -1086,6 +1703,27 @@ const ConstraintsView: React.FC<{
 
   return (
     <div className="constraints-view">
+      <section className="section">
+        <div className="section-header">
+          <h2 className="section-title">Constraints Guide</h2>
+          <button
+            className="section-toggle"
+            onClick={() => setShowConstraintsHelp(prev => !prev)}
+            aria-expanded={showConstraintsHelp}
+            aria-controls="constraints-help"
+            title={showConstraintsHelp ? 'Collapse' : 'Expand'}
+          >
+            <span className={`chevron ${showConstraintsHelp ? 'expanded' : ''}`}>▶</span>
+          </button>
+        </div>
+        {showConstraintsHelp && (
+          <div id="constraints-help" className="section-content">
+            <p style={{ marginTop: 0, color: '#495057' }}>
+              The Constraints tab is designed to present guideline violations and summarize them across your process. Use filters and sorting to focus on the most critical or relevant constraints.
+            </p>
+          </div>
+        )}
+      </section>
       {/* Group Summary (if groups exist) */}
       {constraintGroups.length > 1 && (
         <div className="group-summary-section">
@@ -1384,10 +2022,7 @@ const ConstraintsView: React.FC<{
         ))}
       </div>
 
-      <ConstraintInterdependencyView
-        constraints={constraints}
-        coViolationMatrix={coViolationMatrix}
-      />
+      
     </div>
   );
 };
@@ -1402,7 +2037,9 @@ const TracesView: React.FC<{
   onTraceClick: (trace: DashboardTrace) => void;
   processedConstraints: DashboardConstraint[];
   totalTraces: number;
-}> = ({ traces, traceFilter, setTraceFilter, traceSort, setTraceSort, onTraceClick, processedConstraints, totalTraces }) => {
+  onAddToComparison?: (trace: DashboardTrace) => void;
+  isInComparison?: (caseId: string) => boolean;
+}> = ({ traces, traceFilter, setTraceFilter, traceSort, setTraceSort, onTraceClick, processedConstraints, totalTraces, onAddToComparison, isInComparison }) => {
   return (
     <div className="traces-view">
       {/* Filters */}
@@ -1665,12 +2302,29 @@ const TracesView: React.FC<{
                 <td>{trace.insertions}</td>
                 <td>{trace.deletions}</td>
                 <td>
-                  <button
-                    className="detail-button"
-                    onClick={() => onTraceClick(trace)}
-                  >
-                    View Details
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                      className="detail-button"
+                      onClick={() => onTraceClick(trace)}
+                    >
+                      View Details
+                    </button>
+                    {onAddToComparison && (
+                      <button
+                        className="detail-button"
+                        style={{ background: isInComparison && isInComparison(trace.caseId) ? '#6c757d' : '#27ae60' }}
+                        onClick={() => {
+                          if (!isInComparison || !isInComparison(trace.caseId)) {
+                            onAddToComparison(trace);
+                          }
+                        }}
+                        disabled={!!(isInComparison && isInComparison(trace.caseId))}
+                        title={isInComparison && isInComparison(trace.caseId) ? 'Already added' : 'Add this case to comparison'}
+                      >
+                        {isInComparison && isInComparison(trace.caseId) ? 'Added' : 'Add to comparison'}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -2119,6 +2773,7 @@ const VariantsView: React.FC<{
                     >
                       Show Graph
                     </button>
+                    
                   </div>
                 </td>
               </tr>

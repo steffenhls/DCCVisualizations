@@ -46,6 +46,7 @@ export interface ProcessEvent {
   activity: string;
   timestamp: string;
   resource?: string;
+  attributes?: Record<string, any>;
 }
 
 export interface ProcessCase {
@@ -111,6 +112,7 @@ export interface DashboardTrace {
   events: ProcessEvent[];
   alignedEvents: AlignedEvent[];
   constraintDetails: TraceConstraintDetail[]; // New field for detailed constraint analysis
+  age?: number; // Derived attribute from ER Registration.Age when available
 }
 
 // Dashboard overview KPIs

@@ -535,12 +535,13 @@ const ProcessModelView: React.FC<ProcessModelViewProps> = ({
   return (
     <div className="process-model-view">
       {modelVisualization && (
-        <div className="model-visualization">
+        <div>
           <h3>Process Model</h3>
           <div style={{ 
             fontSize: '12px', 
             color: '#666', 
             marginBottom: '12px',
+            marginTop: '12px',
             padding: '8px 12px',
             backgroundColor: '#f8f9fa',
             borderRadius: '4px',
@@ -557,7 +558,7 @@ const ProcessModelView: React.FC<ProcessModelViewProps> = ({
         </div>
       )}
       
-      <div className="process-flow-visualization" style={{ marginTop: modelVisualization ? 32 : 0 }}>
+      <div style={{ marginTop: modelVisualization ? 32 : 0 }}>
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -621,7 +622,7 @@ const ProcessModelView: React.FC<ProcessModelViewProps> = ({
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                     <label style={{ fontSize: '14px', fontWeight: 500, minWidth: '120px' }}>
-                      Variant Coverage: {minPercentage}%
+                      Variant Coverage
                     </label>
                     <input
                       type="range"
@@ -637,7 +638,7 @@ const ProcessModelView: React.FC<ProcessModelViewProps> = ({
                   </div>
                   
                   <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
-                    {minPercentage === 0 ? 'Showing all variants' : `Showing ${dfgData.coveragePercentage.toFixed(1)}% of traces (${dfgData.includedVariantCount} most common variants)`}
+                    {`Showing ${dfgData.coveragePercentage.toFixed(1)}% of traces (${dfgData.includedVariantCount} most common variants)`}
                   </div>
                 </>
               )}

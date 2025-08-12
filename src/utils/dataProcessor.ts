@@ -312,7 +312,13 @@ export class DataProcessor {
         const traceEvents = Array.isArray(trace.event) ? trace.event : (trace.event ? [trace.event] : []);
         
         for (const event of traceEvents) {
-          const eventStrings = Array.isArray(event.string) ? event.string : (event.string ? [event.string] : []);
+          const asArray = (node: any, tag: string) => Array.isArray(node?.[tag]) ? node[tag] : (node?.[tag] ? [node[tag]] : []);
+
+          const eventStrings = asArray(event, 'string');
+          const eventInts = asArray(event, 'int');
+          const eventFloats = asArray(event, 'float');
+          const eventBooleans = asArray(event, 'boolean');
+          const eventDates = asArray(event, 'date');
 
           const getStringValue = (key: string): string | undefined => {
             const attribute = eventStrings.find((s: any) => s['@_key'] === key);
@@ -320,16 +326,22 @@ export class DataProcessor {
           };
 
           const activity = getStringValue('concept:name') || 'Unknown';
-          const resource = getStringValue('org:group');
-          
-          // Extract timestamp
+          const resource = getStringValue('org:group') || getStringValue('org:resource') || getStringValue('org:role');
+          // Collect attributes from all supported XES attribute types
+          const attributes: Record<string, any> = {};
+          eventStrings.forEach((s: any) => { if (s?.['@_key']) attributes[s['@_key']] = s['@_value']; });
+          eventInts.forEach((i: any) => { if (i?.['@_key']) attributes[i['@_key']] = i['@_value']; });
+          eventFloats.forEach((f: any) => { if (f?.['@_key']) attributes[f['@_key']] = f['@_value']; });
+          eventBooleans.forEach((b: any) => { if (b?.['@_key']) attributes[b['@_key']] = b['@_value']; });
+          eventDates.forEach((d: any) => { if (d?.['@_key']) attributes[d['@_key']] = d['@_value']; });
+
+          // Extract timestamp (prefer explicit time:timestamp from date nodes)
           let timestamp = new Date().toISOString();
           if (event['date']) {
-            const timeDate = Array.isArray(event['date']) 
-              ? event['date'].find((d: any) => d['@_key'] === 'time:timestamp')
-              : event['date'];
-            if (timeDate && timeDate['@_value']) {
-              timestamp = timeDate['@_value'];
+            const dateNodes = asArray(event, 'date');
+            const timeNode = dateNodes.find((d: any) => d['@_key'] === 'time:timestamp') || dateNodes[0];
+            if (timeNode && timeNode['@_value']) {
+              timestamp = timeNode['@_value'];
             }
           }
           
@@ -337,7 +349,8 @@ export class DataProcessor {
             id: `event_${Date.now()}_${Math.random()}`,
             activity,
             timestamp,
-            resource
+            resource,
+            attributes
           };
           
           events.push(processEvent);
@@ -705,6 +718,15 @@ export class DataProcessor {
         });
       });
       
+      // Derive age from ER Registration event if present
+      let derivedAge: number | undefined = undefined;
+      const erRegEvent = events.find(e => e.activity === 'ER Registration');
+      if (erRegEvent && erRegEvent.attributes && erRegEvent.attributes['Age'] !== undefined) {
+        const raw = erRegEvent.attributes['Age'];
+        const parsed = typeof raw === 'number' ? raw : parseInt(String(raw));
+        if (!isNaN(parsed)) derivedAge = parsed;
+      }
+
       return {
         caseId: replay.caseId,
         fitness: replay.fitness,
@@ -717,7 +739,8 @@ export class DataProcessor {
         fulfilledConstraints: Array.from(new Set(fulfilledConstraints)),
         events,
         alignedEvents,
-        constraintDetails
+        constraintDetails,
+        age: derivedAge
       };
     });
     

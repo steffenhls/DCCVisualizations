@@ -132,7 +132,7 @@
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
 }
 
@@ -1914,3 +1914,58 @@
   font-weight: bold;
   min-width: 12px;
 } 
+
+/* Discovery Tab Sections */
+.discovery-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.section {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.section-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.section-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: #3498db;
+  font-size: 0.9rem;
+}
+
+.section-toggle:hover {
+  background: #e9ecef;
+}
+
+.section-content {
+  padding: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .section-content {
+    padding: 1rem;
+  }
+}
