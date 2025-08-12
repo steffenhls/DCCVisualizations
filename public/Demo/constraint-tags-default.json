@@ -1,0 +1,188 @@
+{
+  "tags": {
+    "Precedence[ER Registration, CRP]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "ER Registration required"
+    },
+    "Existence[ER Registration]": {
+      "priority": "CRITICAL",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "ER Registration required"
+    },
+    "Init[ER Registration]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "ER Registration required"
+    },
+    "Response[ER Sepsis Triage, LacticAcid][0,180,m]": {
+      "priority": "HIGH",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Time dependent"
+    },
+    "Response[ER Sepsis Triage, IV Antibiotics][0,60,m]": {
+      "priority": "HIGH",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Time dependent"
+    },
+    "Precedence[ER Triage, ER Sepsis Triage]": {
+      "priority": "MEDIUM",
+      "quality": true,
+      "efficiency": false,
+      "compliance": false
+    },
+    "Precedence[ER Registration, ER Triage]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "ER Registration required"
+    },
+    "Precedence[ER Registration, LacticAcid]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "ER Registration required"
+    },
+    "Precedence[ER Registration, Leucocytes]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "ER Registration required"
+    },
+    "Absence2[ER Sepsis Triage]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false
+    },
+    "Absence2[ER Triage]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false
+    },
+    "Absence2[Release A]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "Release activites"
+    },
+    "Absence2[Release B]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "Release activites"
+    },
+    "Absence2[Release C]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "Release activites"
+    },
+    "Absence2[Release D]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "Release activites"
+    },
+    "Absence2[Release E]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": true,
+      "compliance": false,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release A, Release B]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release A, Release C]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release A, Release D]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release A, Release E]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release B, Release C]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release B, Release D]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release B, Release E]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release C, Release D]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release C, Release E]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    },
+    "Not Co-Existence[Release D, Release E]": {
+      "priority": "MEDIUM",
+      "quality": false,
+      "efficiency": false,
+      "compliance": true,
+      "group": "Release activites"
+    }
+  },
+  "groups": [
+    "ER Registration required",
+    "Time dependent",
+    "Release activites"
+  ]
+}

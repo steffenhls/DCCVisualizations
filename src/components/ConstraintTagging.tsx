@@ -136,6 +136,48 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
     });
   }, [groups]);
 
+  // Build tags payload
+  const buildTagsPayload = useCallback(() => {
+    const tags: Record<string, any> = {};
+    taggedConstraints.forEach(c => { tags[c.id] = c.tag; });
+    return { tags, groups };
+  }, [taggedConstraints, groups]);
+
+  // Export/Import JSON helpers for manual cross-device transfer
+  const handleExportJson = useCallback(() => {
+    const payload = buildTagsPayload();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'constraint-tags.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [buildTagsPayload]);
+
+  const handleImportJson = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const importedGroups: string[] = Array.isArray(data.groups) ? data.groups : [];
+      const importedTags: Record<string, any> = data.tags || {};
+      setGroups(importedGroups);
+      localStorage.setItem('constraintGroups', JSON.stringify(importedGroups));
+      setTaggedConstraints(prev => {
+        const updated = prev.map(c => ({ ...c, tag: importedTags[c.id] || c.tag }));
+        const tagsToSave: Record<string, any> = {};
+        updated.forEach(c => { tagsToSave[c.id] = c.tag; });
+        localStorage.setItem('constraintTags', JSON.stringify(tagsToSave));
+        return updated;
+      });
+    } catch (e) {
+      alert('Failed to import tags. Please check the JSON file format.');
+    }
+  }, []);
+
+
   const handleAssignGroup = useCallback((constraintId: string, groupName: string | undefined) => {
     setTaggedConstraints(prev => {
       const updated = prev.map(c => 
@@ -237,6 +279,22 @@ const ConstraintTagging: React.FC<ConstraintTaggingProps> = ({
           ← Back to Upload
         </button>
       </div>
+
+      {/* Import / Export Controls 
+      <div className="tagging-filters" style={{ gap: 16 }}>
+        <div className="filter-group" style={{ alignSelf: 'flex-end', display: 'flex', gap: 8 }}>
+          <button className="clear-all-tags-button" onClick={handleExportJson}>Export JSON</button>
+          <label className="clear-all-tags-button" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            Import JSON
+            <input type="file" accept="application/json" style={{ display: 'none' }} onChange={e => {
+              const file = (e.target.files && e.target.files[0]) || null;
+              if (file) handleImportJson(file);
+              e.currentTarget.value = '';
+            }} />
+          </label>
+        </div>
+      </div>
+      */}
 
       {/* Filters */}
       <div className="tagging-filters">

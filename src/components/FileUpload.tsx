@@ -15,6 +15,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -77,6 +78,66 @@ const FileUpload: React.FC<FileUploadProps> = ({
     delete newFiles[fileType];
     onFilesChange(newFiles);
   }, [uploadedFiles, onFilesChange]);
+
+  // Demo loader: fetch files from public/Demo and populate automatically
+  const loadDemo = useCallback(async () => {
+    try {
+      setDemoLoading(true);
+      setUploadErrors([]);
+      const base = (process.env.PUBLIC_URL || '') + '/Demo';
+
+      const fetchAsFile = async (path: string, filename: string, type?: string) => {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error(`Failed to fetch ${path}`);
+        const blob = await res.blob();
+        return new File([blob], filename, { type: type || blob.type || 'application/octet-stream' });
+      };
+
+      const [decl, aOverview, aDetail, rOverview, log, aligned] = await Promise.all([
+        fetchAsFile(`${base}/Demo.decl`, 'Demo.decl', 'text/plain'),
+        fetchAsFile(`${base}/analysis_overview.csv`, 'analysis_overview.csv', 'text/csv'),
+        fetchAsFile(`${base}/analysis_detail.csv`, 'analysis_detail.csv', 'text/csv'),
+        fetchAsFile(`${base}/replay_overview.csv`, 'replay_overview.csv', 'text/csv'),
+        fetchAsFile(`${base}/log.xes`, 'log.xes', 'application/xml'),
+        fetchAsFile(`${base}/log_aligned.xes`, 'log_aligned.xes', 'application/xml')
+      ]);
+
+      const newFiles: UploadedFiles = {
+        declarativeModel: decl,
+        analysisOverview: aOverview,
+        analysisDetail: aDetail,
+        replayOverview: rOverview,
+        eventLog: log,
+        alignedLog: aligned
+      };
+
+      // Try to load default constraint tags/groups for demo
+      try {
+        const tagsRes = await fetch(`${base}/constraint-tags-default.json`);
+        if (tagsRes.ok) {
+          const json = await tagsRes.json();
+          if (json && typeof json === 'object') {
+            if (json.tags) {
+              localStorage.setItem('constraintTags', JSON.stringify(json.tags));
+            }
+            if (Array.isArray(json.groups)) {
+              localStorage.setItem('constraintGroups', JSON.stringify(json.groups));
+            }
+          }
+        }
+      } catch (e) {
+        // Non-fatal: proceed without default tags
+        // eslint-disable-next-line no-console
+        console.warn('Demo tags not loaded:', e);
+      }
+
+      onFilesChange(newFiles);
+    } catch (e: any) {
+      setUploadErrors([e?.message || 'Failed to load demo files']);
+    } finally {
+      setDemoLoading(false);
+    }
+  }, [onFilesChange]);
 
   const getFileDisplayName = (file: File): string => {
     return file.name.length > 30 ? `${file.name.substring(0, 27)}...` : file.name;
@@ -189,6 +250,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
       </div>
 
       <div className="upload-actions">
+        <button
+          className={`next-button ${demoLoading ? 'disabled' : 'enabled'}`}
+          onClick={loadDemo}
+          disabled={demoLoading}
+          style={{ background: '#6c757d', marginRight: 12 }}
+        >
+          {demoLoading ? 'Loading Demo…' : 'Load Demo'}
+        </button>
         <button
           className={`next-button ${canProceed ? 'enabled' : 'disabled'}`}
           onClick={onNext}
