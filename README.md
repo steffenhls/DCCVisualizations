@@ -1,3 +1,7 @@
+[![Live](https://img.shields.io/badge/Live-DCCVisualizations-brightgreen)](https://steffenhls.github.io/DCCVisualizations/)
+![Process Mining](https://img.shields.io/badge/Process%20Mining-blue)
+![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)
+
 # Declarative Conformance Checking Frontend
 
 This project is an interactive web application for **declarative conformance checking**—a modern approach to analyzing how real-world process executions (event logs) comply with flexible, rule-based process models (DECLARE). The app empowers users to upload, tag, and analyze declarative process models and their conformance results, providing deep insights into process quality, compliance, and efficiency.
