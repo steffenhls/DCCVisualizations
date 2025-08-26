@@ -396,12 +396,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   }, [traceFilter]);
 
   const handleNavigateToTracesWithSequenceFilter = useCallback((sequence: string) => {
+    console.log(sequence)
     // Navigate to traces view with sequence filtering
     setTraceFilter({
       ...traceFilter,
       sequence: sequence
     });
-    setActiveView('traces');
+    setTraceListMode('traces');
   }, [traceFilter]);
 
   const handleNavigateToVariants = useCallback(() => {  
@@ -1256,7 +1257,7 @@ const OverviewView: React.FC<{
               <ul style={{ margin: '0.5rem 0 0 1.25rem', color: '#495057' }}>
                 <li><strong>Conformance KPIs</strong>: At-a-glance metrics for traces, constraints, and overall conformance.</li>
                 <li><strong>Violations overview</strong>: High-level counts for critical and high-priority violations.</li>
-                <li><strong>Conformance distribution</strong>: Fitness distribution chart to see how traces spread across conformance levels.</li>
+                <li><strong>Fitness distribution</strong>: Fitness distribution chart to see how traces spread across fitness levels.</li>
               </ul>
             </div>
           )}
@@ -1311,11 +1312,11 @@ const OverviewView: React.FC<{
         <div 
           className="kpi-card clickable" 
           style={{ cursor: onNavigateToTracesWithFitnessSort ? 'pointer' : 'default' }}
-          onMouseEnter={(e) => handleMouseEnter(e, "Average fitness across all traces. Click to view traces sorted by fitness (low to high).")}
+          onMouseEnter={(e) => handleMouseEnter(e, "Average fitness across all traces. It is computed via alignments: the fewer insertions or deletions needed to replay the log on the model, the higher the fitness")}
           onMouseLeave={handleMouseLeave}
           onClick={() => handleClick(onNavigateToTracesWithFitnessSort)}
         >
-          <h3>Overall Fitness</h3>
+          <h3>Average Fitness</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallFitness * 100)}
         </div>
@@ -1325,7 +1326,7 @@ const OverviewView: React.FC<{
           onMouseEnter={(e) => handleMouseEnter(e, "Percentage of traces that have no constraint violations.")}
           onMouseLeave={handleMouseLeave}
         >
-          <h3>Overall Conformance</h3>
+          <h3>Conformance Score</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallConformance * 100)}
         </div>
@@ -1337,7 +1338,7 @@ const OverviewView: React.FC<{
           onMouseLeave={handleMouseLeave}
           onClick={() => handleClick(onNavigateToConstraintsWithCompliance)}
         >
-          <h3>Overall Compliance</h3>
+          <h3>Compliance Score</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallCompliance * 100)}
         </div>
@@ -1349,7 +1350,7 @@ const OverviewView: React.FC<{
           onMouseLeave={handleMouseLeave}
           onClick={() => handleClick(onNavigateToConstraintsWithQuality)}
         >
-          <h3>Overall Quality</h3>
+          <h3>Quality Score</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallQuality * 100)}
         </div>
@@ -1361,7 +1362,7 @@ const OverviewView: React.FC<{
           onMouseLeave={handleMouseLeave}
           onClick={() => handleClick(onNavigateToConstraintsWithEfficiency)}
         >
-          <h3>Overall Efficiency</h3>
+          <h3>Efficiency Score</h3>
           <div className="kpi-value-with-progress">
             {renderCircularProgress(animatedValues.overallEfficiency * 100)}
         </div>
